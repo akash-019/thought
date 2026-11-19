@@ -2,9 +2,10 @@
 
 Session booking with reminders.
 
-**Live demo:** https://thought-9hk8.onrender.com/login (log in with any [demo account](#quick-start),
-password `password123`). It runs on Render's free plan: the first visit after a quiet spell can take
-about a minute while it wakes up, and data resets to the demo accounts when it restarts.
+**Live demo:** https://thought-9hk8.onrender.com/login
+
+> This is a Render app (free plan), so the first time it may take about a minute to load.
+> Log in with any [demo account](#quick-start); the password is `password123`.
 
 Thought is a small, working version of a booking flow for a mental-health platform. Members find a
 professional, pick a time from a 4-week calendar shown in their own timezone, confirm, and book a
