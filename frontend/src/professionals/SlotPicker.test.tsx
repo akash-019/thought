@@ -37,7 +37,7 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 
 function renderPicker(onSelect = vi.fn()) {
-  render(<SlotPicker professionalId="3" professionalName="Dr Sofia Ramirez" selected={null} onSelect={onSelect} />);
+  render(<SlotPicker professionalId="3" professionalName="Dr Sofia Ramirez" refreshKey={0} selected={null} onSelect={onSelect} />);
   return onSelect;
 }
 

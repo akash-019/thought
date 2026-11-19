@@ -12,7 +12,7 @@
     "start": "node dist/server.js",
     "start:worker": "node dist/worker.js",
     "migrate": "tsx src/db/migrate-cli.ts",
-    "seed": "tsx src/db/seed.ts",
+    "seed": "tsx src/db/seed-cli.ts",
     "test": "vitest run",
     "test:unit": "vitest run --project unit",
     "typecheck": "tsc --noEmit"

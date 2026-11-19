@@ -20,21 +20,21 @@ interface Props {
   onChanged: (message: string) => void;
 }
 
-export function SessionRow({ session: s, user, onChanged }: Props) {
+export function SessionRow({ session, user, onChanged }: Props) {
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const start = DateTime.fromISO(s.startAt, { zone: user.timezone });
+  const start = DateTime.fromISO(session.startAt, { zone: user.timezone });
   const isMember = user.role === 'member';
-  const isUpcoming = s.status === 'booked' && new Date(s.endAt) > new Date();
-  const other = s.counterpart;
-  const shortNotice = new Date(s.startAt).getTime() - Date.now() < 24 * 60 * 60 * 1000;
+  const isUpcoming = session.status === 'booked' && new Date(session.endAt) > new Date();
+  const other = session.counterpart;
+  const shortNotice = new Date(session.startAt).getTime() - Date.now() < 24 * 60 * 60 * 1000;
 
   async function cancel() {
     setBusy(true);
     setError(null);
     try {
-      await api(`/sessions/${s.id}/cancel`, { method: 'POST' });
+      await api(`/sessions/${session.id}/cancel`, { method: 'POST' });
       onChanged('Session cancelled');
     } catch (err) {
       setError(errorMessage(err));
@@ -51,24 +51,24 @@ export function SessionRow({ session: s, user, onChanged }: Props) {
 
       <div className="session-main">
         <p className="session-when">
-          {start.toFormat('cccc')}, {formatTime(s.startAt, user.timezone)} – {formatTime(s.endAt, user.timezone)}
-          {isUpcoming && <span className="session-day-label">{dayLabel(s.startAt, user.timezone)}</span>}
+          {start.toFormat('cccc')}, {formatTime(session.startAt, user.timezone)} – {formatTime(session.endAt, user.timezone)}
+          {isUpcoming && <span className="session-day-label">{dayLabel(session.startAt, user.timezone)}</span>}
         </p>
         <p className="session-with">
           {isMember ? 'With ' : ''}
           {other.name}
         </p>
-        {clocksDiffer(s.startAt, user.timezone, other.timezone) && (
+        {clocksDiffer(session.startAt, user.timezone, other.timezone) && (
           <p className="session-their-time">
-            {theirClock(s.startAt, other.timezone, user.timezone)} – {formatTime(s.endAt, other.timezone)} for {firstName(other.name)} in{' '}
+            {theirClock(session.startAt, other.timezone, user.timezone)} – {formatTime(session.endAt, other.timezone)} for {firstName(other.name)} in{' '}
             {cityOf(other.timezone)}
           </p>
         )}
-        {!isUpcoming && <p className="session-status">{statusText(s, user)}</p>}
-        {isUpcoming && isMember && !s.canCancel && (
+        {!isUpcoming && <p className="session-status">{statusText(session, user)}</p>}
+        {isUpcoming && isMember && !session.canCancel && (
           <p className="session-locked">
             Less than 24 hours to go, so this session can’t be cancelled or moved here. If you can’t attend, please
-            contact {s.counterpart.name}.
+            contact {other.name}.
           </p>
         )}
         {error && (
@@ -78,14 +78,14 @@ export function SessionRow({ session: s, user, onChanged }: Props) {
         )}
       </div>
 
-      {isUpcoming && (s.canCancel || s.canReschedule) && (
+      {isUpcoming && (session.canCancel || session.canReschedule) && (
         <div className="session-actions">
           {confirmingCancel ? (
             <div className="inline-confirm">
-              <p>Cancel this session? {s.counterpart.name} will be told.</p>
+              <p>Cancel this session? {other.name} will be told.</p>
               {!isMember && shortNotice && (
                 <p className="inline-confirm-note">
-                  It starts {relative(s.startAt)}. Short-notice cancellations are hard for members, so only cancel if
+                  It starts {relative(session.startAt)}. Short-notice cancellations are hard for members, so only cancel if
                   you must.
                 </p>
               )}
@@ -100,12 +100,12 @@ export function SessionRow({ session: s, user, onChanged }: Props) {
             </div>
           ) : (
             <div className="button-row">
-              {s.canReschedule && (
-                <Link to={`/sessions/${s.id}/reschedule`} className="button button-quiet">
+              {session.canReschedule && (
+                <Link to={`/sessions/${session.id}/reschedule`} className="button button-quiet">
                   Reschedule
                 </Link>
               )}
-              {s.canCancel && (
+              {session.canCancel && (
                 <button type="button" className="button button-quiet" onClick={() => setConfirmingCancel(true)}>
                   Cancel
                 </button>
@@ -119,8 +119,8 @@ export function SessionRow({ session: s, user, onChanged }: Props) {
 }
 
 /** "Completed", "Cancelled by you", "Moved to another time"... for past sessions. */
-function statusText(s: Session, user: User): string {
-  if (s.status === 'rescheduled') return 'Moved to another time';
-  if (s.status === 'cancelled') return s.cancelledBy === user.role ? 'Cancelled by you' : `Cancelled by ${s.counterpart.name}`;
+function statusText(session: Session, user: User): string {
+  if (session.status === 'rescheduled') return 'Moved to another time';
+  if (session.status === 'cancelled') return session.cancelledBy === user.role ? 'Cancelled by you' : `Cancelled by ${session.counterpart.name}`;
   return 'Completed';
 }

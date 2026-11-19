@@ -31,9 +31,9 @@ export function dayLabel(iso: string, zone: string): string {
  * "16:00", or "Thu 19 Nov, 12:00" when it is still Thursday in New York but already Friday for you.
  */
 export function theirClock(iso: string, theirZone: string, yourZone: string): string {
-  const theirs = at(iso, theirZone);
-  const sameDate = theirs.toISODate() === at(iso, yourZone).toISODate();
-  return sameDate ? theirs.toFormat('HH:mm') : theirs.toFormat('ccc d LLL, HH:mm');
+  const date = theirDateIfDifferent(iso, theirZone, yourZone);
+  const time = formatTime(iso, theirZone);
+  return date ? `${date}, ${time}` : time;
 }
 
 /** Their date ("Thu 19 Nov") if it differs from yours at that moment, otherwise null. */

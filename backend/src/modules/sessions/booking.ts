@@ -13,7 +13,7 @@
  * error 23P01, which we turn into a clear "slot just taken" message.
  */
 import type { DataSource, EntityManager } from 'typeorm';
-import { SessionEntity } from './session.model.js';
+import { SessionEntity, ownedBy } from './session.model.js';
 import type { AuthUser } from '../auth/auth.middleware.js';
 import { UserEntity } from '../auth/user.model.js';
 import { isOfferedSlot, sessionEnd } from '../availability/slots.js';
@@ -21,6 +21,7 @@ import { loadBlockedDates, loadWeeklyRules } from '../availability/weekly-hours.
 import { NotificationEntity, type NotificationType } from '../notifications/notification.model.js';
 import { ReminderEntity } from '../notifications/reminder.model.js';
 import { planReminders } from '../notifications/reminders.js';
+import { HOUR_MS, MINUTE_MS } from '../../common/clock.js';
 import { badRequest, conflict, dbError, forbidden, notFound } from '../../common/errors.js';
 import type { Settings } from '../../config.js';
 
@@ -96,11 +97,7 @@ async function insertSession(tx: EntityManager, req: BookingRequest, rescheduled
   const pro = await tx.findOneBy(UserEntity, { id: professionalId, role: 'professional' });
   if (!pro) throw notFound('Professional not found.');
 
-  const timeProblem = bookingTimeProblem(start, now, settings.minNoticeMinutes);
-  if (timeProblem === 'IN_PAST') throw badRequest('SLOT_IN_PAST', 'This time has already passed. Please pick a future slot.');
-  if (timeProblem === 'TOO_SOON') {
-    throw badRequest('TOO_SOON', `Sessions must be booked at least ${settings.minNoticeMinutes} minutes ahead.`);
-  }
+  checkBookingTime(start, now, settings.minNoticeMinutes);
 
   const offered = isOfferedSlot(
     {
@@ -122,16 +119,15 @@ async function insertSession(tx: EntityManager, req: BookingRequest, rescheduled
     rescheduledFromId: rescheduledFromId ?? null,
   });
 
-  for (const r of planReminders({ memberId: member.id, professionalId: pro.id, startAt: start }, now)) {
-    await tx.insert(ReminderEntity, { sessionId: saved.id, userId: r.userId, kind: r.kind, fireAt: r.fireAt, status: 'pending' });
+  for (const reminder of planReminders({ memberId: member.id, professionalId: pro.id, startAt: start }, now)) {
+    await tx.insert(ReminderEntity, { sessionId: saved.id, userId: reminder.userId, kind: reminder.kind, fireAt: reminder.fireAt, status: 'pending' });
   }
   return saved.id;
 }
 
 /** Loads the caller's session and locks it (SELECT ... FOR UPDATE) until the transaction ends. */
 async function lockOwnSession(tx: EntityManager, user: AuthUser, sessionId: string) {
-  const owner = user.role === 'member' ? { memberId: user.id } : { professionalId: user.id };
-  const session = await tx.findOne(SessionEntity, { where: { id: sessionId, ...owner }, lock: { mode: 'pessimistic_write' } });
+  const session = await tx.findOne(SessionEntity, { where: { id: sessionId, ...ownedBy(user) }, lock: { mode: 'pessimistic_write' } });
   // 404 (not 403) so we do not even reveal that someone else's session exists.
   if (!session) throw notFound('Session not found.');
   return session;
@@ -172,22 +168,20 @@ async function withOverlapMessages<T>(action: () => Promise<T>): Promise<T> {
  * Measured in real elapsed time (milliseconds), not calendar days, so a daylight saving change
  * in between does not stretch or shrink the window.
  */
-export const MEMBER_CHANGE_CUTOFF_HOURS = 24;
-const HOUR_MS = 3_600_000;
+const MEMBER_CHANGE_CUTOFF_HOURS = 24;
 
 export function memberCanChange(sessionStart: Date, now: Date): boolean {
   return sessionStart.getTime() - now.getTime() >= MEMBER_CHANGE_CUTOFF_HOURS * HOUR_MS;
 }
 
-export const WITHIN_CUTOFF_MESSAGE =
+const WITHIN_CUTOFF_MESSAGE =
   `Sessions can only be cancelled or rescheduled more than ${MEMBER_CHANGE_CUTOFF_HOURS} hours before they start. ` +
   'Please contact your professional if you can no longer attend.';
 
-export type BookingTimeProblem = 'IN_PAST' | 'TOO_SOON' | null;
-
-/** Why a start time cannot be booked yet, independent of availability. */
-export function bookingTimeProblem(start: Date, now: Date, minNoticeMinutes: number): BookingTimeProblem {
-  if (start.getTime() <= now.getTime()) return 'IN_PAST';
-  if (start.getTime() < now.getTime() + minNoticeMinutes * 60_000) return 'TOO_SOON';
-  return null;
+/** A new booking must be in the future, and at least `minNoticeMinutes` ahead. */
+export function checkBookingTime(start: Date, now: Date, minNoticeMinutes: number): void {
+  if (start <= now) throw badRequest('SLOT_IN_PAST', 'This time has already passed. Please pick a future slot.');
+  if (start.getTime() < now.getTime() + minNoticeMinutes * MINUTE_MS) {
+    throw badRequest('TOO_SOON', `Sessions must be booked at least ${minNoticeMinutes} minutes ahead.`);
+  }
 }

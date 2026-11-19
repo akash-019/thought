@@ -11,13 +11,13 @@ import { createApp } from './app.js';
 import { systemClock } from './common/clock.js';
 import { config } from './config.js';
 import { connect, runMigrations } from './db/data-source.js';
-import { seedDemoData } from './db/seed.js';
+import { DEMO_PASSWORD, seedDemoData } from './db/seed.js';
 import { startReminderLoop } from './modules/notifications/reminders.js';
 
 const db = await connect(config.databaseUrl);
 await runMigrations(db);
 if (config.seedDemoData && (await seedDemoData(db))) {
-  console.log('Demo data created. Password for every demo account: password123');
+  console.log(`Demo data created. Password for every demo account: ${DEMO_PASSWORD}`);
 }
 const app = createApp({ db, clock: systemClock, settings: config, staticDir: config.staticDir });
 

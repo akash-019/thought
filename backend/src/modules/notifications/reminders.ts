@@ -16,20 +16,21 @@
 import type { DataSource } from 'typeorm';
 import { NotificationEntity } from './notification.model.js';
 import { ReminderEntity, type ReminderKind } from './reminder.model.js';
+import { MINUTE_MS } from '../../common/clock.js';
 
 const REMINDERS: { kind: ReminderKind; minutesBefore: number }[] = [
   { kind: '24h', minutesBefore: 24 * 60 },
   { kind: '1h', minutesBefore: 60 },
 ];
 
-/** The reminder's new status for each decision of the worker. */
-const STATUS_AFTER = { deliver: 'delivered', expire: 'expired', cancel: 'cancelled' } as const;
+/** How many due reminders one worker round handles at most. */
+const BATCH_SIZE = 500;
 
 /** Reminders to create for a new session. Times that have already passed are skipped. */
 export function planReminders(session: { memberId: string; professionalId: string; startAt: Date }, now: Date) {
   const planned: { userId: string; kind: ReminderKind; fireAt: Date }[] = [];
   for (const { kind, minutesBefore } of REMINDERS) {
-    const fireAt = new Date(session.startAt.getTime() - minutesBefore * 60_000);
+    const fireAt = new Date(session.startAt.getTime() - minutesBefore * MINUTE_MS);
     if (fireAt <= now) continue;
     planned.push({ userId: session.memberId, kind, fireAt });
     planned.push({ userId: session.professionalId, kind, fireAt });
@@ -38,17 +39,17 @@ export function planReminders(session: { memberId: string; professionalId: strin
 }
 
 /**
- * What to do with a due reminder. Normally deliver it. But if the worker was down and the
- * session has already started, a "starts soon" message is useless, so it is expired instead.
+ * The new status of a due reminder. Normally 'delivered'. But if the worker was down and the
+ * session has already started, a "starts soon" message is useless, so it is 'expired' instead.
  */
-export function decideDelivery(sessionStatus: string, sessionStart: Date, now: Date): 'deliver' | 'expire' | 'cancel' {
-  if (sessionStatus !== 'booked') return 'cancel'; // safety net: cancelling already does this
-  if (now >= sessionStart) return 'expire';
-  return 'deliver';
+export function newReminderStatus(sessionStatus: string, sessionStart: Date, now: Date): 'delivered' | 'expired' | 'cancelled' {
+  if (sessionStatus !== 'booked') return 'cancelled'; // safety net: cancelling already does this
+  if (now >= sessionStart) return 'expired';
+  return 'delivered';
 }
 
-/** Delivers up to `limit` due reminders. Returns how many were delivered / expired / cancelled. */
-export async function processDueReminders(db: DataSource, now: Date, limit = 500) {
+/** Delivers the due reminders (up to BATCH_SIZE). Returns how many were delivered / expired / cancelled. */
+export async function processDueReminders(db: DataSource, now: Date) {
   return db.transaction(async (tx) => {
     const due: { id: string; user_id: string; session_id: string; kind: ReminderKind; status: string; start_at: Date }[] =
       await tx.query(
@@ -59,23 +60,22 @@ export async function processDueReminders(db: DataSource, now: Date, limit = 500
           ORDER BY r.fire_at
           LIMIT $2
           FOR UPDATE OF r SKIP LOCKED`,
-        [now, limit],
+        [now, BATCH_SIZE],
       );
 
     const counts = { delivered: 0, expired: 0, cancelled: 0 };
-    for (const r of due) {
-      const decision = decideDelivery(r.status, r.start_at, now);
-      if (decision === 'deliver') {
+    for (const reminder of due) {
+      const newStatus = newReminderStatus(reminder.status, reminder.start_at, now);
+      if (newStatus === 'delivered') {
         await tx
           .createQueryBuilder()
           .insert()
           .into(NotificationEntity)
-          .values({ userId: r.user_id, type: `reminder_${r.kind}`, sessionId: r.session_id, reminderId: r.id })
+          .values({ userId: reminder.user_id, type: `reminder_${reminder.kind}`, sessionId: reminder.session_id, reminderId: reminder.id })
           .orIgnore() // ON CONFLICT DO NOTHING: never a second notification for one reminder
           .execute();
       }
-      const newStatus = STATUS_AFTER[decision];
-      await tx.update(ReminderEntity, { id: r.id }, { status: newStatus, processedAt: now });
+      await tx.update(ReminderEntity, { id: reminder.id }, { status: newStatus, processedAt: now });
       counts[newStatus] += 1;
     }
     return counts;

@@ -10,52 +10,15 @@
  * Every query is filtered by the caller's own id, so nobody can see someone else's sessions.
  */
 import { Router } from 'express';
-import { In, LessThanOrEqual, MoreThan, Not, type EntityManager } from 'typeorm';
-import { bookSession, cancelSession, memberCanChange, rescheduleSession } from './booking.js';
-import { SessionEntity, type Session } from './session.model.js';
+import { LessThanOrEqual, MoreThan, Not } from 'typeorm';
+import { bookSession, cancelSession, rescheduleSession } from './booking.js';
+import { describeSessions } from './session-view.js';
+import { ownedBy, SessionEntity, type Session } from './session.model.js';
 import { bookSessionSchema, listSessionsSchema, rescheduleSessionSchema } from './sessions.schema.js';
 import { requireRole, requireUser, type AuthUser } from '../auth/auth.middleware.js';
-import { UserEntity } from '../auth/user.model.js';
 import type { AppDeps } from '../../app.js';
 import { notFound } from '../../common/errors.js';
 import { idParamSchema } from '../../common/schemas.js';
-
-/** WHERE condition for "sessions that belong to this user". */
-function ownedBy(user: AuthUser) {
-  return user.role === 'member' ? { memberId: user.id } : { professionalId: user.id };
-}
-
-/**
- * Turns sessions into what the UI shows, from `user`'s point of view: who the session is with,
- * and whether the cancel / reschedule buttons should be enabled.
- */
-export async function describeSessions(db: EntityManager, user: AuthUser, sessions: Session[], now: Date) {
-  if (sessions.length === 0) return [];
-  const isMember = user.role === 'member';
-  const otherId = (s: Session) => (isMember ? s.professionalId : s.memberId);
-  const others = await db.findBy(UserEntity, { id: In(sessions.map(otherId)) });
-
-  return sessions.map((s) => {
-    const other = others.find((u) => u.id === otherId(s))!;
-    const active = s.status === 'booked' && s.endAt > now;
-    const memberMayChange = isMember && active && memberCanChange(s.startAt, now);
-    return {
-      id: s.id,
-      startAt: s.startAt.toISOString(),
-      endAt: s.endAt.toISOString(),
-      status: s.status,
-      cancelledBy: s.cancelledBy,
-      // The other person's timezone lets each side see the session in the other's local time too.
-      // Members also get the professional's id (to rebook); professionals never get the member's id or email.
-      counterpart: isMember
-        ? { id: other.id, name: other.name, timezone: other.timezone }
-        : { name: other.name, timezone: other.timezone },
-      // Members: only 24h+ ahead. Professionals: any time until it ends.
-      canCancel: isMember ? memberMayChange : active,
-      canReschedule: memberMayChange,
-    };
-  });
-}
 
 export function sessionRoutes({ db, clock, settings }: AppDeps): Router {
   const router = Router();

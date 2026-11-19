@@ -1,15 +1,15 @@
 /**
  * File: src/common/clock.ts
  *
- * The Clock abstraction: the only way code asks "what time is it now?".
- * Production uses the system clock; tests use fixedClock to test time rules (24h rule, reminders) exactly.
+ * Time helpers. A Clock is the only way code asks "what time is it now?": production uses the
+ * system clock, tests use fixedClock to test time rules (24h rule, reminders) exactly.
+ * Business rules must never call `new Date()` directly.
  */
 
+export const MINUTE_MS = 60_000;
+export const HOUR_MS = 60 * MINUTE_MS;
+export const DAY_MS = 24 * HOUR_MS;
 
-/**
- * All "what time is it now" questions go through a Clock so tests can pin time.
- * Business rules (24h rule, past slots, reminder times) must never call `new Date()` directly.
- */
 export interface Clock {
   now(): Date;
 }

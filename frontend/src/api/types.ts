@@ -26,7 +26,7 @@ export interface Professional {
   timezone: string;
 }
 
-export interface SlotDay {
+interface SlotDay {
   date: string; // YYYY-MM-DD in the member's timezone
   slots: { startAt: string; localTime: string }[];
 }

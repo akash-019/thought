@@ -13,12 +13,13 @@
  */
 import { DateTime } from 'luxon';
 import { toMinutes, type WeeklyRule } from './weekly-hours.js';
+import { MINUTE_MS } from '../../common/clock.js';
 
-export const SESSION_MINUTES = 50;
-export const SLOT_STEP_MINUTES = 60;
+const SESSION_MINUTES = 50;
+const SLOT_STEP_MINUTES = 60;
 export const BOOKING_WINDOW_DAYS = 28; // members can book up to 4 weeks ahead
 
-export interface TimeRange {
+interface TimeRange {
   start: Date;
   end: Date;
 }
@@ -60,18 +61,18 @@ export function localTimeToInstant(day: DateTime, minutes: number): DateTime | n
 }
 
 /** All free slot start times (UTC, earliest first) for one professional between `from` and `to`. */
-export function generateSlots(q: SlotQuery): Date[] {
+export function generateSlots(query: SlotQuery): Date[] {
   const slots: Date[] = [];
 
   // Walk the professional's local calendar days. Start a day early and end a day late because
   // the edges of a UTC window can fall on a different local date (e.g. in Auckland or Los Angeles).
-  let day = DateTime.fromJSDate(q.from, { zone: q.timezone }).startOf('day').minus({ days: 1 });
-  const lastDay = DateTime.fromJSDate(q.to, { zone: q.timezone }).startOf('day').plus({ days: 1 });
+  let day = DateTime.fromJSDate(query.from, { zone: query.timezone }).startOf('day').minus({ days: 1 });
+  const lastDay = DateTime.fromJSDate(query.to, { zone: query.timezone }).startOf('day').plus({ days: 1 });
 
   for (; day <= lastDay; day = day.plus({ days: 1 })) {
-    if (q.blockedDates?.includes(day.toISODate()!)) continue;
+    if (query.blockedDates?.includes(day.toISODate()!)) continue;
 
-    for (const rule of q.rules.filter((r) => r.weekday === day.weekday)) {
+    for (const rule of query.rules.filter((r) => r.weekday === day.weekday)) {
       const rangeStart = toMinutes(rule.start)!;
       const rangeEnd = toMinutes(rule.end)!;
       const rangeEndInstant = localTimeToInstant(day, rangeEnd);
@@ -82,8 +83,8 @@ export function generateSlots(q: SlotQuery): Date[] {
         const end = sessionEnd(start);
 
         if (rangeEndInstant && end > rangeEndInstant.toJSDate()) continue; // DST day: range is shorter in real time
-        if (start < q.from || start >= q.to || start < q.earliestStart) continue;
-        if (q.busy?.some((b) => start < b.end && b.start < end)) continue; // overlaps a booking
+        if (start < query.from || start >= query.to || start < query.earliestStart) continue;
+        if (query.busy?.some((b) => start < b.end && b.start < end)) continue; // overlaps a booking
 
         slots.push(start);
       }
@@ -93,13 +94,13 @@ export function generateSlots(q: SlotQuery): Date[] {
 }
 
 /** True if `start` is exactly one of the slots the professional offers. Used to validate bookings. */
-export function isOfferedSlot(q: Omit<SlotQuery, 'from' | 'to'>, start: Date): boolean {
-  const oneMinuteLater = new Date(start.getTime() + 60_000);
-  return generateSlots({ ...q, from: start, to: oneMinuteLater }).some((s) => s.getTime() === start.getTime());
+export function isOfferedSlot(query: Omit<SlotQuery, 'from' | 'to'>, start: Date): boolean {
+  const oneMinuteLater = new Date(start.getTime() + MINUTE_MS);
+  return generateSlots({ ...query, from: start, to: oneMinuteLater }).some((s) => s.getTime() === start.getTime());
 }
 
 export function sessionEnd(start: Date): Date {
-  return new Date(start.getTime() + SESSION_MINUTES * 60_000);
+  return new Date(start.getTime() + SESSION_MINUTES * MINUTE_MS);
 }
 
 /**

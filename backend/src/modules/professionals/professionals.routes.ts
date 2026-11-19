@@ -15,11 +15,12 @@ import { BOOKING_WINDOW_DAYS, generateSlots, groupByLocalDate } from '../availab
 import { loadBlockedDates, loadWeeklyRules } from '../availability/weekly-hours.js';
 import { SessionEntity } from '../sessions/session.model.js';
 import type { AppDeps } from '../../app.js';
+import { DAY_MS, MINUTE_MS } from '../../common/clock.js';
 import { notFound } from '../../common/errors.js';
 import { idParamSchema } from '../../common/schemas.js';
 
 /** Public profile: never the email or anything about bookings. */
-const publicProfile = (u: User) => ({ id: u.id, name: u.name, bio: u.bio, timezone: u.timezone });
+const publicProfile = (user: User) => ({ id: user.id, name: user.name, bio: user.bio, timezone: user.timezone });
 
 export function professionalRoutes({ db, clock, settings }: AppDeps): Router {
   const router = Router();
@@ -45,7 +46,7 @@ export function professionalRoutes({ db, clock, settings }: AppDeps): Router {
     const member = requireRole(req, 'member');
     const pro = await findProfessional(idParamSchema.parse(req.params).id);
     const from = clock.now();
-    const to = new Date(from.getTime() + BOOKING_WINDOW_DAYS * 86_400_000);
+    const to = new Date(from.getTime() + BOOKING_WINDOW_DAYS * DAY_MS);
 
     // Busy times: this professional's bookings, plus the member's own bookings with anyone
     // (the member could not book an overlapping slot anyway, so it is not shown as free).
@@ -64,7 +65,7 @@ export function professionalRoutes({ db, clock, settings }: AppDeps): Router {
       busy: busy.map((s) => ({ start: s.startAt, end: s.endAt })),
       from,
       to,
-      earliestStart: new Date(from.getTime() + settings.minNoticeMinutes * 60_000),
+      earliestStart: new Date(from.getTime() + settings.minNoticeMinutes * MINUTE_MS),
     });
 
     res.json({

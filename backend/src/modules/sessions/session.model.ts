@@ -40,3 +40,8 @@ export const SessionEntity = new EntitySchema<Session>({
     createdAt: { type: 'timestamptz', name: 'created_at', createDate: true },
   },
 });
+
+/** WHERE condition for "sessions that belong to this user" (as member or as professional). */
+export function ownedBy(user: { id: string; role: Role }) {
+  return user.role === 'member' ? { memberId: user.id } : { professionalId: user.id };
+}

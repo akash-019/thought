@@ -12,7 +12,7 @@ import { In, IsNull } from 'typeorm';
 import { NotificationEntity } from './notification.model.js';
 import { requireUser } from '../auth/auth.middleware.js';
 import { SessionEntity } from '../sessions/session.model.js';
-import { describeSessions } from '../sessions/sessions.routes.js';
+import { describeSessions } from '../sessions/session-view.js';
 import type { AppDeps } from '../../app.js';
 import { notFound } from '../../common/errors.js';
 import { idParamSchema } from '../../common/schemas.js';

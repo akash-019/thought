@@ -4,8 +4,8 @@
  * Unit tests: the 24-hour rule, booking time checks, reminder planning and delivery decisions.
  */
 import { describe, expect, it } from 'vitest';
-import { decideDelivery, planReminders } from '../../src/modules/notifications/reminders.js';
-import { bookingTimeProblem, memberCanChange } from '../../src/modules/sessions/booking.js';
+import { newReminderStatus, planReminders } from '../../src/modules/notifications/reminders.js';
+import { checkBookingTime, memberCanChange } from '../../src/modules/sessions/booking.js';
 
 const d = (s: string) => new Date(s);
 const START = d('2027-01-10T15:00:00Z');
@@ -33,16 +33,24 @@ describe('24-hour change rule for members', () => {
   });
 });
 
-describe('bookingTimeProblem', () => {
+describe('checkBookingTime', () => {
   const now = d('2027-01-10T12:00:00Z');
+  const errorCode = (start: Date, minNotice: number) => {
+    try {
+      checkBookingTime(start, now, minNotice);
+      return null;
+    } catch (err) {
+      return (err as { code: string }).code;
+    }
+  };
   it('rejects past and current times', () => {
-    expect(bookingTimeProblem(d('2027-01-10T11:00:00Z'), now, 0)).toBe('IN_PAST');
-    expect(bookingTimeProblem(now, now, 0)).toBe('IN_PAST');
+    expect(errorCode(d('2027-01-10T11:00:00Z'), 0)).toBe('SLOT_IN_PAST');
+    expect(errorCode(now, 0)).toBe('SLOT_IN_PAST');
   });
   it('applies the minimum notice', () => {
-    expect(bookingTimeProblem(d('2027-01-10T13:00:00Z'), now, 120)).toBe('TOO_SOON');
-    expect(bookingTimeProblem(d('2027-01-10T14:00:00Z'), now, 120)).toBeNull();
-    expect(bookingTimeProblem(d('2027-01-10T13:00:00Z'), now, 0)).toBeNull();
+    expect(errorCode(d('2027-01-10T13:00:00Z'), 120)).toBe('TOO_SOON');
+    expect(errorCode(d('2027-01-10T14:00:00Z'), 120)).toBeNull();
+    expect(errorCode(d('2027-01-10T13:00:00Z'), 0)).toBeNull();
   });
 });
 
@@ -73,15 +81,15 @@ describe('planReminders', () => {
   });
 });
 
-describe('decideDelivery', () => {
+describe('newReminderStatus', () => {
   it('delivers before the session starts', () => {
-    expect(decideDelivery('booked', START, d('2027-01-10T14:00:05Z'))).toBe('deliver');
+    expect(newReminderStatus('booked', START, d('2027-01-10T14:00:05Z'))).toBe('delivered');
   });
   it('expires when the worker catches up after the session started', () => {
-    expect(decideDelivery('booked', START, d('2027-01-10T15:00:00Z'))).toBe('expire');
+    expect(newReminderStatus('booked', START, d('2027-01-10T15:00:00Z'))).toBe('expired');
   });
   it('cancels for a session that is no longer booked', () => {
-    expect(decideDelivery('cancelled', START, d('2027-01-10T14:00:00Z'))).toBe('cancel');
-    expect(decideDelivery('rescheduled', START, d('2027-01-10T14:00:00Z'))).toBe('cancel');
+    expect(newReminderStatus('cancelled', START, d('2027-01-10T14:00:00Z'))).toBe('cancelled');
+    expect(newReminderStatus('rescheduled', START, d('2027-01-10T14:00:00Z'))).toBe('cancelled');
   });
 });

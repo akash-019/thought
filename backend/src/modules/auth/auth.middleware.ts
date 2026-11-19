@@ -10,7 +10,7 @@
 import type { NextFunction, Request, Response } from 'express';
 import type { DataSource } from 'typeorm';
 import { verifyAccessToken } from './tokens.js';
-import { UserEntity, type Role } from './user.model.js';
+import { UserEntity, type Role, type User } from './user.model.js';
 import type { Clock } from '../../common/clock.js';
 import { forbidden, unauthorized } from '../../common/errors.js';
 
@@ -20,6 +20,11 @@ export interface AuthUser {
   email: string;
   role: Role;
   timezone: string;
+}
+
+/** The fields of a user that are safe to use and send everywhere (never the password hash). */
+export function toAuthUser(user: Pick<User, 'id' | 'name' | 'email' | 'role' | 'timezone'>): AuthUser {
+  return { id: user.id, name: user.name, email: user.email, role: user.role, timezone: user.timezone };
 }
 
 declare global {
@@ -36,7 +41,7 @@ declare global {
 export function loadUser(db: DataSource, clock: Clock) {
   return async (req: Request, _res: Response, next: NextFunction) => {
     const header = req.headers.authorization;
-    const token = header?.startsWith('Bearer ') ? header.slice(7).trim() : undefined;
+    const token = header?.startsWith('Bearer ') ? header.slice('Bearer '.length).trim() : undefined;
     if (token) {
       const result = verifyAccessToken(token, clock.now());
       if (result === 'expired') {
@@ -44,7 +49,7 @@ export function loadUser(db: DataSource, clock: Clock) {
       } else if (result) {
         // Load the user so a deleted account stops working and name/timezone are always current.
         const user = await db.manager.findOneBy(UserEntity, { id: result.userId });
-        if (user) req.user = { id: user.id, name: user.name, email: user.email, role: user.role, timezone: user.timezone };
+        if (user) req.user = toAuthUser(user);
       }
     }
     next();
@@ -53,7 +58,7 @@ export function loadUser(db: DataSource, clock: Clock) {
 
 export function requireUser(req: Request): AuthUser {
   if (req.user) return req.user;
-  if (req.tokenExpired) throw unauthorized('Your session expired. Please refresh your token.', 'TOKEN_EXPIRED');
+  if (req.tokenExpired) throw unauthorized('TOKEN_EXPIRED', 'Your session expired. Please refresh your token.');
   throw unauthorized();
 }
 

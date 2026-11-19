@@ -10,7 +10,7 @@ import { DateTime } from 'luxon';
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../api/client';
 import type { SlotsResponse } from '../api/types';
-import { ErrorNote, Loading } from '../components/States';
+import { Empty, ErrorNote, Loading } from '../components/States';
 import { cityOf, formatLongDate, formatTime, theirDateIfDifferent } from '../lib/time';
 import { useLoad } from '../lib/useLoad';
 
@@ -20,12 +20,12 @@ interface Props {
   professionalId: string;
   professionalName: string;
   /** Change this number to reload the slots (e.g. after "slot just taken"). */
-  refreshKey?: number;
+  refreshKey: number;
   selected: string | null;
   onSelect: (startAt: string | null) => void;
 }
 
-export function SlotPicker({ professionalId, professionalName, refreshKey = 0, selected, onSelect }: Props) {
+export function SlotPicker({ professionalId, professionalName, refreshKey, selected, onSelect }: Props) {
   const { data, error, loading, reload } = useLoad(
     () => api<SlotsResponse>(`/professionals/${professionalId}/slots`),
     [professionalId, refreshKey],
@@ -45,10 +45,9 @@ export function SlotPicker({ professionalId, professionalName, refreshKey = 0, s
 
   if (data.days.length === 0) {
     return (
-      <div className="empty">
-        <p className="empty-title">No free times in the next 4 weeks</p>
+      <Empty title="No free times in the next 4 weeks">
         <p>{professionalName} is fully booked or hasn’t set working hours yet. Try another professional.</p>
-      </div>
+      </Empty>
     );
   }
 

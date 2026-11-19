@@ -31,10 +31,14 @@ export function TimezoneSelect({ zones, value, onChange }: Props) {
     listRef.current?.children[active]?.scrollIntoView({ block: 'nearest' });
   }, [active]);
 
-  function choose(zone: string) {
-    onChange(zone);
+  function close() {
     setOpen(false);
     setQuery('');
+  }
+
+  function choose(zone: string) {
+    onChange(zone);
+    close();
   }
 
   function onKeyDown(e: React.KeyboardEvent) {
@@ -50,8 +54,7 @@ export function TimezoneSelect({ zones, value, onChange }: Props) {
       e.preventDefault();
       if (results[active]) choose(results[active]);
     } else if (e.key === 'Escape') {
-      setOpen(false);
-      setQuery('');
+      close();
     }
   }
 
@@ -73,10 +76,7 @@ export function TimezoneSelect({ zones, value, onChange }: Props) {
             setOpen(true);
             setActive(Math.max(results.indexOf(value), 0));
           }}
-          onBlur={() => {
-            setOpen(false);
-            setQuery('');
-          }}
+          onBlur={close}
           onChange={(e) => {
             setQuery(e.target.value);
             setActive(0);

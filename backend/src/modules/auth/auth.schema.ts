@@ -7,7 +7,7 @@ import { z } from 'zod';
 import { isValidTimezone } from '../../common/timezones.js';
 
 /** Emails are trimmed and lower-cased so "Sam@Example.com " and "sam@example.com" are the same account. */
-const email = z.preprocess((v) => (typeof v === 'string' ? v.trim().toLowerCase() : v), z.email().max(254));
+const email = z.preprocess((value) => (typeof value === 'string' ? value.trim().toLowerCase() : value), z.email().max(254));
 
 export const signupSchema = z.object({
   name: z.string().trim().min(1).max(100),

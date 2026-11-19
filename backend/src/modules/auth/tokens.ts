@@ -14,19 +14,17 @@ import { createHash, randomBytes } from 'node:crypto';
 import { IsNull, type DataSource, type EntityManager } from 'typeorm';
 import { RefreshTokenEntity } from './refresh-token.model.js';
 import { UserEntity, type Role, type User } from './user.model.js';
+import { DAY_MS, MINUTE_MS } from '../../common/clock.js';
 import { config, type Settings } from '../../config.js';
 
 type Lifetimes = Pick<Settings, 'accessTokenTtlMinutes' | 'refreshTokenTtlDays'>;
 
-export interface TokenPair {
+interface TokenPair {
   accessToken: string;
   accessTokenExpiresAt: string;
   refreshToken: string;
   refreshTokenExpiresAt: string;
 }
-
-const MINUTE_MS = 60_000;
-const DAY_MS = 24 * 60 * MINUTE_MS;
 
 function sha256(text: string): string {
   return createHash('sha256').update(text).digest('hex');

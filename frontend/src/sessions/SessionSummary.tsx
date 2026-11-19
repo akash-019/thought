@@ -11,7 +11,7 @@ interface Props {
   withName: string;
   startAt: string;
   yourTimezone: string;
-  theirTimezone?: string;
+  theirTimezone: string;
   previousStartAt?: string;
 }
 
@@ -33,7 +33,7 @@ export function SessionSummary({ withName, startAt, yourTimezone, theirTimezone,
         <dd>
           {formatDateTime(startAt, yourTimezone)}
           <span className="summary-sub">Your time, {cityOf(yourTimezone)}</span>
-          {theirTimezone && theirTimezone !== yourTimezone && (
+          {theirTimezone !== yourTimezone && (
             <span className="summary-sub">
               {theirClock(startAt, theirTimezone, yourTimezone)} for {firstName(withName)} in {cityOf(theirTimezone)}
             </span>

@@ -31,8 +31,8 @@ export function availabilityRoutes({ db }: AppDeps): Router {
 
     await db.transaction(async (tx) => {
       await tx.delete(AvailabilityRuleEntity, { professionalId: pro.id });
-      for (const r of rules) {
-        await tx.insert(AvailabilityRuleEntity, { professionalId: pro.id, weekday: r.weekday, startLocal: r.start, endLocal: r.end });
+      for (const rule of rules) {
+        await tx.insert(AvailabilityRuleEntity, { professionalId: pro.id, weekday: rule.weekday, startLocal: rule.start, endLocal: rule.end });
       }
     });
     res.json({ timezone: pro.timezone, rules: sortRules(rules) });

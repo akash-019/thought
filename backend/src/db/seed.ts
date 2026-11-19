@@ -1,13 +1,14 @@
 /**
  * File: src/db/seed.ts
  *
- * Demo data so the app can be tried straight away: `npm run seed`.
+ * Demo data so the app can be tried straight away (`npm run seed`, or SEED_DEMO_DATA=true).
  * Creates fictional professionals in three timezones (with working hours), two members, and a
  * few booked sessions. Does nothing if any users already exist. All people and emails are made up.
  * Every account's password is "password123".
  */
 import { DateTime } from 'luxon';
 import type { DataSource } from 'typeorm';
+import { toAuthUser } from '../modules/auth/auth.middleware.js';
 import { hashPassword } from '../modules/auth/password.js';
 import { UserEntity, type User } from '../modules/auth/user.model.js';
 import { AvailabilityRuleEntity } from '../modules/availability/availability-rule.model.js';
@@ -15,7 +16,7 @@ import { generateSlots } from '../modules/availability/slots.js';
 import { loadWeeklyRules } from '../modules/availability/weekly-hours.js';
 import { bookSession } from '../modules/sessions/booking.js';
 
-const PASSWORD = 'password123';
+export const DEMO_PASSWORD = 'password123';
 
 const PROFESSIONALS = [
   {
@@ -50,22 +51,23 @@ const MEMBERS = [
   { name: 'Priya Nair', email: 'priya@example.com', timezone: 'America/Los_Angeles' },
 ];
 
-export async function seedDemoData(db: DataSource, now = new Date()): Promise<boolean> {
+export async function seedDemoData(db: DataSource): Promise<boolean> {
   if ((await db.manager.count(UserEntity)) > 0) return false;
-  const passwordHash = await hashPassword(PASSWORD);
+  const now = new Date();
+  const passwordHash = await hashPassword(DEMO_PASSWORD);
 
   const pros: User[] = [];
-  for (const p of PROFESSIONALS) {
+  for (const profile of PROFESSIONALS) {
     const pro = await db.manager.save(UserEntity, {
-      name: p.name,
-      email: p.email,
-      timezone: p.timezone,
-      bio: p.bio,
+      name: profile.name,
+      email: profile.email,
+      timezone: profile.timezone,
+      bio: profile.bio,
       passwordHash,
       role: 'professional' as const,
     });
-    for (const h of p.hours) {
-      await db.manager.insert(AvailabilityRuleEntity, { professionalId: pro.id, weekday: h.weekday, startLocal: h.start, endLocal: h.end });
+    for (const range of profile.hours) {
+      await db.manager.insert(AvailabilityRuleEntity, { professionalId: pro.id, weekday: range.weekday, startLocal: range.start, endLocal: range.end });
     }
     pros.push(pro);
   }
@@ -97,21 +99,10 @@ async function bookAround(db: DataSource, member: User, pro: User, now: Date, ho
   });
   if (!slot) return;
   await bookSession(db, {
-    member: { id: member.id, name: member.name, email: member.email, role: 'member', timezone: member.timezone },
+    member: toAuthUser(member),
     professionalId: pro.id,
     start: slot,
     now,
     settings: { minNoticeMinutes: 0 },
   }).catch(() => {}); // a clash with another demo session is fine to skip
-}
-
-
-// `npm run seed`
-if (import.meta.url === `file://${process.argv[1]}`) {
-  const { config } = await import('../config.js');
-  const { connect, runMigrations } = await import('./data-source.js');
-  const db = await connect(config.databaseUrl);
-  await runMigrations(db);
-  console.log((await seedDemoData(db)) ? 'Demo data created. Password for every account: password123' : 'Users exist already; nothing to do.');
-  await db.destroy();
 }

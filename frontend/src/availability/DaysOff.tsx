@@ -123,7 +123,7 @@ export function DaysOff() {
                       type="button"
                       className="icon-button"
                       aria-label={`Unblock ${formatLongDate(d)}`}
-                      onClick={() => saveDates(data.filter((x) => x !== d), `${formatLongDate(d)} available again`)}
+                      onClick={() => saveDates(data.filter((day) => day !== d), `${formatLongDate(d)} available again`)}
                     >
                       ×
                     </button>

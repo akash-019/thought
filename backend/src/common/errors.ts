@@ -9,7 +9,7 @@ import type { ErrorRequestHandler } from 'express';
 import { ZodError } from 'zod';
 
 /** An error that becomes an HTTP response. `code` is a stable name the frontend can check. */
-export class HttpError extends Error {
+class HttpError extends Error {
   constructor(
     public status: number,
     public code: string,
@@ -20,7 +20,7 @@ export class HttpError extends Error {
 }
 
 export const badRequest = (code: string, message: string) => new HttpError(400, code, message);
-export const unauthorized = (message = 'Please log in.', code = 'UNAUTHENTICATED') => new HttpError(401, code, message);
+export const unauthorized = (code = 'UNAUTHENTICATED', message = 'Please log in.') => new HttpError(401, code, message);
 export const forbidden = (code: string, message: string) => new HttpError(403, code, message);
 export const notFound = (message = 'Not found.') => new HttpError(404, 'NOT_FOUND', message);
 export const conflict = (code: string, message: string) => new HttpError(409, code, message);
@@ -49,6 +49,6 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
  * 23505 = unique value already exists, 23P01 = exclusion constraint (overlapping sessions).
  */
 export function dbError(err: unknown): { code?: string; constraint?: string } {
-  const e = err as { code?: string; constraint?: string } | undefined;
-  return { code: e?.code, constraint: e?.constraint };
+  const failure = err as { code?: string; constraint?: string } | undefined;
+  return { code: failure?.code, constraint: failure?.constraint };
 }

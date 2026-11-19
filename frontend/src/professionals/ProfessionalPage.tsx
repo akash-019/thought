@@ -26,10 +26,10 @@ export function ProfessionalPage() {
 
   if (pro.loading) return <Loading />;
   if (pro.error || !pro.data) return <ErrorNote message={pro.error ?? 'Professional not found.'} />;
-  const p = pro.data;
+  const professional = pro.data;
 
   async function book(startAt: string) {
-    await api('/sessions', { method: 'POST', body: { professionalId: p.id, startAt } });
+    await api('/sessions', { method: 'POST', body: { professionalId: professional.id, startAt } });
     toast.show(`Session booked for ${formatDateTime(startAt, user.timezone)}`);
     navigate('/sessions');
   }
@@ -41,17 +41,17 @@ export function ProfessionalPage() {
       </Link>
       <header className="profile">
         <span className="avatar avatar-large" aria-hidden="true">
-          {initials(p.name)}
+          {initials(professional.name)}
         </span>
         <div>
-          <h1>{p.name}</h1>
-          {p.bio && <p className="lead">{p.bio}</p>}
-          <p className="muted">Based in {cityOf(p.timezone)}</p>
+          <h1>{professional.name}</h1>
+          {professional.bio && <p className="lead">{professional.bio}</p>}
+          <p className="muted">Based in {cityOf(professional.timezone)}</p>
         </div>
       </header>
 
       <PickAndConfirm
-        professional={p}
+        professional={professional}
         text={{ pick: 'Choose a time', confirm: 'Confirm your session', button: 'Book session', busy: 'Booking…' }}
         note="You can cancel or reschedule up to 24 hours before it starts. You’ll get reminders 24 hours and 1 hour before."
         onConfirm={book}

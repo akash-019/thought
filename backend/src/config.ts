@@ -6,9 +6,9 @@
 function intEnv(name: string, fallback: number): number {
   const raw = process.env[name];
   if (raw === undefined || raw === '') return fallback;
-  const n = Number(raw);
-  if (!Number.isInteger(n)) throw new Error(`${name} must be an integer, got "${raw}"`);
-  return n;
+  const value = Number(raw);
+  if (!Number.isInteger(value)) throw new Error(`${name} must be an integer, got "${raw}"`);
+  return value;
 }
 
 function jwtSecret(): string {
@@ -19,7 +19,7 @@ function jwtSecret(): string {
 }
 
 export const config = {
-  databaseUrl: process.env.DATABASE_URL ?? 'postgres://booking:booking@localhost:5432/booking',
+  databaseUrl: process.env.DATABASE_URL ?? 'postgres://booking:booking@localhost:5433/booking', // the docker compose database
   port: intEnv('PORT', 4000),
   /** Secret used to sign access tokens (JWT, HS256). Must be set in production. */
   jwtSecret: jwtSecret(),

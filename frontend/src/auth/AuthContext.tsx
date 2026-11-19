@@ -4,11 +4,11 @@
  * Who is logged in. Provides `user` plus `login`, `signup` and `logout` to every page.
  * On page load it asks the backend who the saved token belongs to (GET /me).
  */
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { api, LOGGED_OUT_EVENT, tokens } from '../api/client';
 import type { AuthResponse, Role, User } from '../api/types';
 
-export interface SignupInput {
+interface SignupInput {
   name: string;
   email: string;
   password: string;
@@ -48,24 +48,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener(LOGGED_OUT_EVENT, onLoggedOut);
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
-    const res = await api<AuthResponse>('/auth/login', { method: 'POST', body: { email, password } });
+  /** After log-in or sign-up: keep the tokens and remember who is logged in. */
+  function startSession(res: AuthResponse) {
     tokens.save(res);
     setUser(res.user);
-  }, []);
+  }
 
-  const signup = useCallback(async (input: SignupInput) => {
-    const res = await api<AuthResponse>('/auth/signup', { method: 'POST', body: input });
-    tokens.save(res);
-    setUser(res.user);
-  }, []);
+  async function login(email: string, password: string) {
+    startSession(await api<AuthResponse>('/auth/login', { method: 'POST', body: { email, password } }));
+  }
 
-  const logout = useCallback(async () => {
+  async function signup(input: SignupInput) {
+    startSession(await api<AuthResponse>('/auth/signup', { method: 'POST', body: input }));
+  }
+
+  async function logout() {
     const refreshToken = tokens.refresh();
     if (refreshToken) await api('/auth/logout', { method: 'POST', body: { refreshToken } }).catch(() => {});
     tokens.clear();
     setUser(null);
-  }, []);
+  }
 
   return <AuthContext.Provider value={{ user, loading, login, signup, logout }}>{children}</AuthContext.Provider>;
 }

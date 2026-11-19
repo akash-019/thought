@@ -20,8 +20,9 @@ import { SessionEntity } from '../modules/sessions/session.model.js';
 // local midnight of the *server*, which silently shifts calendar dates across timezones.
 pg.types.setTypeParser(pg.types.builtins.DATE, (value: string) => value);
 
-export function createDataSource(url: string): DataSource {
-  return new DataSource({
+/** Creates and connects to the database. */
+export async function connect(url: string): Promise<DataSource> {
+  const db = new DataSource({
     type: 'postgres',
     url,
     // Every model (table) of every module.
@@ -38,13 +39,8 @@ export function createDataSource(url: string): DataSource {
     migrationsTransactionMode: 'each',
     // The schema is owned by the migrations, never auto-synced from the entities.
     synchronize: false,
-    extra: { max: 10 },
   });
-}
-
-/** Creates and connects a DataSource. */
-export async function connect(url: string): Promise<DataSource> {
-  return createDataSource(url).initialize();
+  return db.initialize();
 }
 
 /**
@@ -56,7 +52,7 @@ export async function runMigrations(ds: DataSource, log: (msg: string) => void =
   await lock.connect();
   try {
     await lock.query('SELECT pg_advisory_lock(727001)');
-    const applied = await ds.runMigrations({ transaction: 'each' });
+    const applied = await ds.runMigrations();
     for (const migration of applied) log(`migrated ${migration.name}`);
   } finally {
     await lock.query('SELECT pg_advisory_unlock(727001)').catch(() => {});

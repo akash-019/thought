@@ -13,7 +13,7 @@ const STEP_MINUTES = 60; // a 50-minute session + 10-minute break
 export const toMinutes = (time: string) => Number(time.slice(0, 2)) * 60 + Number(time.slice(3, 5));
 
 /** 570 -> "09:30" */
-export const fromMinutes = (minutes: number) =>
+const fromMinutes = (minutes: number) =>
   `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
 
 /** "09:00" + 4 hours -> "13:00" (never past 23:55, the last time a time input can show) */
@@ -25,7 +25,7 @@ export function previewSessions(rule: WeeklyRule): string {
   const end = toMinutes(rule.end);
   if (end <= start) return 'End must be after start.';
   const starts: string[] = [];
-  for (let m = start; m + SESSION_MINUTES <= end; m += STEP_MINUTES) starts.push(fromMinutes(m));
+  for (let minutes = start; minutes + SESSION_MINUTES <= end; minutes += STEP_MINUTES) starts.push(fromMinutes(minutes));
   if (starts.length === 0) return 'Too short for a 50-minute session.';
   return `${starts.length} session${starts.length > 1 ? 's' : ''}: ${starts.join(', ')}`;
 }

@@ -7,10 +7,10 @@
 import type { AppNotification } from '../api/types';
 import { formatDateTime } from '../lib/time';
 
-export function notificationText(n: AppNotification, timezone: string): { title: string; detail: string } {
-  const name = n.session?.counterpart.name ?? 'Someone';
-  const when = n.session ? formatDateTime(n.session.startAt, timezone) : '';
-  switch (n.type) {
+export function notificationText(notification: AppNotification, timezone: string): { title: string; detail: string } {
+  const name = notification.session?.counterpart.name ?? 'Someone';
+  const when = notification.session ? formatDateTime(notification.session.startAt, timezone) : '';
+  switch (notification.type) {
     case 'reminder_24h':
       return { title: 'Your session is tomorrow', detail: `With ${name}, ${when}` };
     case 'reminder_1h':
