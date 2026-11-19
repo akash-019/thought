@@ -1,0 +1,40 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: booking
+      POSTGRES_PASSWORD: booking
+      POSTGRES_DB: booking
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/initdb:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "5433:5432" # 5433 on the host to avoid clashing with a local Postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U booking -d booking"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  api:
+    build: { context: ./backend, target: runtime }
+    environment:
+      DATABASE_URL: postgres://booking:booking@db:5432/booking
+      PORT: "4000"
+    depends_on:
+      db: { condition: service_healthy }
+    ports:
+      - "4000:4000"
+    restart: unless-stopped
+
+  # Runs the test suite against its own database:  docker compose run --rm test
+  test:
+    build: { context: ./backend, target: test }
+    environment:
+      TEST_DATABASE_URL: postgres://booking:booking@db:5432/booking_test
+    depends_on:
+      db: { condition: service_healthy }
+    profiles: ["test"]
+
+volumes:
+  pgdata:
