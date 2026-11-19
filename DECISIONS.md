@@ -96,7 +96,8 @@ session: 24 hours and 1 hour before, for both the member and the professional. A
 has already passed is not created (booking 3 hours ahead creates only the two 1-hour reminders).
 Cancelling or rescheduling marks pending reminders `cancelled` in the same transaction as the change.
 
-**Delivery.** A separate worker process (`backend/src/worker.ts`) polls every 10 seconds:
+**Delivery.** The reminder worker polls every 10 seconds. It runs inside the app process
+(`RUN_REMINDER_WORKER=true`) or as its own process (`backend/src/worker.ts`); either way:
 
 ```sql
 SELECT … FROM reminders r JOIN sessions s ON s.id = r.session_id
@@ -194,15 +195,17 @@ queried every 10 seconds. That is fine at this scale; see "next steps" for a que
   this over separate controller and service layers to keep each feature in a few readable files.
 - **Polling the notification list** every 30 seconds in the UI instead of WebSockets or server-sent
   events: simple and enough for reminders measured in hours.
-- **The database is always a separate service,** never inside the app image. On hosts like Render the
-  app container's disk is wiped on every deploy, restart or sleep, which would delete all users,
-  sessions and reminders (the brief requires they survive a restart). A separate Postgres also lets
-  several app or worker instances share one source of truth, which is what the overlap constraints
-  and exactly-once reminders rely on.
-- **One process on Render.** Render's free plan has no background workers, so the hosted demo runs
-  the reminder loop inside the API process (`RUN_REMINDER_WORKER=true`) and the API also serves the
-  built web app (`STATIC_DIR`). Delivery stays exactly-once because the guarantees live in the
-  database, not in the process layout. With Docker Compose they are separate services.
+- **One Docker image, two containers locally.** The root `Dockerfile` builds the API, the web app
+  and the reminder worker into one image; docker-compose.yml runs it next to Postgres. Postgres is
+  its own service with a volume, so data survives restarts and redeploys, and several app or worker
+  processes can share one database, which the
+  overlap constraints and exactly-once reminders rely on. Production would use a managed database.
+- **The Render demo is one container.** Render's free plan has no background workers or persistent
+  disk, so on Render the same image runs without a `DATABASE_URL` and `start.sh` starts Postgres
+  inside the container too. Data lasts until the instance
+  restarts or redeploys and the demo accounts are re-seeded each time; attaching a disk at `/data`
+  (paid plan) makes it durable. It is still Postgres rather than SQLite, because the design depends
+  on Postgres features (exclusion constraints, `FOR UPDATE SKIP LOCKED`).
 - **Slots are computed on request** from the weekly rules rather than stored. 4 weeks for one
   professional is a few hundred slots, which is cheap; it also means changing hours takes effect
   immediately.

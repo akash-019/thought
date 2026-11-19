@@ -1,7 +1,8 @@
 /**
  * File: src/worker.ts
  *
- * Reminder worker entry point (a separate process from the API).
+ * Reminder worker entry point, for running it as its own process. (The Docker image runs the same
+ * loop inside the API process instead: RUN_REMINDER_WORKER=true.)
  * Every REMINDER_POLL_MS it asks the database for due reminders and delivers them as in-app
  * notifications. Because all state is in the database, restarting it never loses or repeats a reminder.
  */

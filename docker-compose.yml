@@ -1,14 +1,5 @@
-# Everything in one command:   docker compose up --build
-#   web     http://localhost:3000        the app
-#   api     http://localhost:4000/api/docs   API docs
-#   worker  delivers reminders
-#   db      Postgres (localhost:5433)
-# Tests:   docker compose run --rm test
-
-x-backend-env: &backend-env
-  DATABASE_URL: postgres://booking:booking@db:5432/booking
-  # Demo value so it works out of the box. Use a real secret in production.
-  JWT_SECRET: ${JWT_SECRET:-local-demo-secret-change-me}
+# Everything in one command:  docker compose up --build   → the app on http://localhost:3000
+# Tests:                      docker compose run --rm test
 
 services:
   db:
@@ -19,7 +10,9 @@ services:
       POSTGRES_DB: booking
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./docker/postgres:/docker-entrypoint-initdb.d:ro
+    configs:
+      - source: create-test-database
+        target: /docker-entrypoint-initdb.d/create-test-database.sql
     ports:
       - "5433:5432" # 5433 on the host to avoid clashing with a local Postgres
     healthcheck:
@@ -28,45 +21,34 @@ services:
       timeout: 3s
       retries: 30
 
-  api:
-    build: { context: ./backend, target: runtime }
+  # The API, the web app and the reminder worker, all from the one Dockerfile.
+  app:
+    build: .
     environment:
-      <<: *backend-env
-      PORT: "4000"
-      SEED_DEMO_DATA: "true" # fictional demo users on first start (empty database only)
+      DATABASE_URL: postgres://booking:booking@db:5432/booking
+      JWT_SECRET: ${JWT_SECRET:-local-demo-secret-change-me} # demo value; use a real secret in production
       SIGNUPS_PER_HOUR: "500" # local only, so repeated e2e runs don't hit the sign-up limit (default 20)
     depends_on:
       db: { condition: service_healthy }
     ports:
-      - "4000:4000"
+      - "3000:4000"
     restart: unless-stopped
 
-  # Separate process that delivers due reminders. Safe to restart at any time.
-  worker:
-    build: { context: ./backend, target: runtime }
-    command: ["node", "dist/worker.js"]
-    environment:
-      <<: *backend-env
-    depends_on:
-      db: { condition: service_healthy }
-    restart: unless-stopped
-
-  web:
-    build: ./frontend
-    depends_on:
-      - api
-    ports:
-      - "3000:80"
-    restart: unless-stopped
-
-  # Runs the backend test suite against its own database:  docker compose run --rm test
+  # The backend tests, against their own database:  docker compose run --rm test
   test:
-    build: { context: ./backend, target: test }
+    build: { context: ., target: test }
     environment:
       TEST_DATABASE_URL: postgres://booking:booking@db:5432/booking_test
     depends_on:
       db: { condition: service_healthy }
     profiles: ["test"]
+
+configs:
+  # Runs once, when the database volume is first created.
+  create-test-database:
+    content: |
+      -- A separate database for the test suite, so tests never touch the app's data.
+      CREATE DATABASE booking_test;
 
 volumes:
   pgdata:

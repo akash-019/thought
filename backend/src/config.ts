@@ -34,8 +34,8 @@ export const config = {
   /** Create fictional demo users and sessions on start-up when the database is empty. */
   seedDemoData: process.env.SEED_DEMO_DATA === 'true',
   /**
-   * Also run the reminder worker inside the API process. For hosting with a single process
-   * (e.g. Render's free plan); with Docker Compose the worker is its own service instead.
+   * Also run the reminder worker inside the API process. The Docker image turns this on (locally
+   * and on Render); without it, run the worker as its own process (`node dist/worker.js`).
    */
   runReminderWorker: process.env.RUN_REMINDER_WORKER === 'true',
   /** Folder with the built frontend. When set, the API also serves the web app (single-service hosting). */

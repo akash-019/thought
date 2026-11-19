@@ -1,4 +1,5 @@
-# API documentation (OpenAPI 3.1). Served as interactive docs at http://localhost:4000/api/docs
+# API documentation (OpenAPI 3.1). Served as interactive docs at /api/docs
+# (http://localhost:3000/api/docs with docker compose; :4000 with `npm run dev`).
 openapi: 3.1.0
 info:
   title: Thought API

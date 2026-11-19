@@ -63,8 +63,8 @@ export function createApp(deps: AppDeps) {
   });
   app.use('/api', api);
 
-  // Single-service hosting: also serve the built web app. Any other path loads index.html and
-  // React picks the page (same as the nginx setup used with Docker Compose).
+  // Single-service hosting (the Docker image): also serve the built web app. Any other path loads
+  // index.html and React picks the page.
   if (deps.staticDir) {
     const dir = deps.staticDir;
     app.use(express.static(dir, { index: false, maxAge: '1h' }));
