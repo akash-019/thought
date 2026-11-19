@@ -29,6 +29,8 @@ export const config = {
   refreshTokenTtlDays: intEnv('REFRESH_TOKEN_TTL_DAYS', 7),
   /** Minimum notice for a booking, in minutes (optional extra from the brief). */
   minNoticeMinutes: intEnv('MIN_NOTICE_MINUTES', 120),
+  /** Create fictional demo users and sessions on start-up when the database is empty. */
+  seedDemoData: process.env.SEED_DEMO_DATA === 'true',
   /** How often the reminder worker looks for due reminders. */
   reminderPollMs: intEnv('REMINDER_POLL_MS', 10_000),
 };

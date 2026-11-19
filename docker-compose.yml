@@ -1,3 +1,15 @@
+# Everything in one command:   docker compose up --build
+#   web     http://localhost:3000        the app
+#   api     http://localhost:4000/api/docs   API docs
+#   worker  delivers reminders
+#   db      Postgres (localhost:5433)
+# Tests:   docker compose run --rm test
+
+x-backend-env: &backend-env
+  DATABASE_URL: postgres://booking:booking@db:5432/booking
+  # Demo value so it works out of the box. Use a real secret in production.
+  JWT_SECRET: ${JWT_SECRET:-local-demo-secret-change-me}
+
 services:
   db:
     image: postgres:16-alpine
@@ -19,17 +31,34 @@ services:
   api:
     build: { context: ./backend, target: runtime }
     environment:
-      DATABASE_URL: postgres://booking:booking@db:5432/booking
+      <<: *backend-env
       PORT: "4000"
-      # Demo value so `docker compose up` works out of the box. Use a real secret in production.
-      JWT_SECRET: ${JWT_SECRET:-local-demo-secret-change-me}
+      SEED_DEMO_DATA: "true" # fictional demo users on first start (empty database only)
     depends_on:
       db: { condition: service_healthy }
     ports:
       - "4000:4000"
     restart: unless-stopped
 
-  # Runs the test suite against its own database:  docker compose run --rm test
+  # Separate process that delivers due reminders. Safe to restart at any time.
+  worker:
+    build: { context: ./backend, target: runtime }
+    command: ["node", "dist/worker.js"]
+    environment:
+      <<: *backend-env
+    depends_on:
+      db: { condition: service_healthy }
+    restart: unless-stopped
+
+  web:
+    build: ./frontend
+    depends_on:
+      - api
+    ports:
+      - "3000:80"
+    restart: unless-stopped
+
+  # Runs the backend test suite against its own database:  docker compose run --rm test
   test:
     build: { context: ./backend, target: test }
     environment:
