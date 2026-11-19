@@ -142,6 +142,9 @@ queried every 10 seconds. That is fine at this scale; see "next steps" for a que
   (so a Monday-morning slot in Kolkata appears on Sunday evening for a member in Los Angeles), and the
   UI shows each slot in both the member's and the professional's time. All times use the timezone
   saved on the account, not the browser's.
+- **Timezone names:** Node's built-in list still uses some old IANA names (`Asia/Calcutta`,
+  `Europe/Kiev`), so people searching for "Kolkata" or "Kyiv" at sign-up would not find their city.
+  The list offered at sign-up maps these to the current names; old names are still accepted.
 - **The 24-hour rule and reminders** use elapsed time, so a daylight saving change in between does
   not stretch or shrink them.
 - **Tested** with New York (spring forward and fall back), London, Kolkata (half-hour offset) and
