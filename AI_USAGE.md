@@ -1,76 +1,59 @@
 # AI usage
 
-## Tools
+I used Claude Code (Anthropic's coding assistant) inside VS Code for this whole assignment. I didn't
+use any other AI tools.
 
-- **Claude Code** (Anthropic's coding agent, running in VS Code) as a pair programmer for the whole
-  project.
-- No other AI tools.
+## What I used it for
 
-## How I used it
+I started by giving it the brief and asking for a plan before any code: the stack, the data model,
+which parts are actually hard here, and what needs tests. I went through that plan and picked the
+stack myself. After that it wrote most of the code and the tests, and I steered it: I made the design
+calls, reviewed what it produced, ran things, and asked for changes when I didn't like the result.
+It also drafted the README and DECISIONS, which I then went through and edited.
 
-| Part | What the AI did | What I did |
-| --- | --- | --- |
-| Planning | Read the brief and proposed a plan: stack, data model, the hard parts, test list, 5-day schedule. | Reviewed the plan, chose the stack, and set the priorities. |
-| Backend | Wrote most of the code and tests from the agreed design. | Made the design calls and pushed back where it got complicated (see below). Reviewed the code, ran it, and checked behaviour. |
-| Frontend | Proposed a design direction and wrote the React app; took screenshots in a headless browser to review its own UI. | Asked for a calm, readable UI and good UX, and reviewed the screens. |
-| Docs | Drafted README, DECISIONS and this file from what we actually built. | Edited them and checked every claim against the code. |
+A few things I changed from what it first suggested:
 
-Decisions I made during the work rather than accepting the first proposal:
+- It started with Kysely (a query builder). I switched to TypeORM because that's what I'm used to and
+  can explain properly. The migrations stayed as plain SQL, since the overlap constraints can't be
+  written in TypeORM anyway.
+- It first built login with a server-side session cookie. I wanted JWT with access and refresh
+  tokens, so we changed it. Rotation and reuse detection came out of that.
+- The first folder structure spread every feature across lots of layer folders (routes, services,
+  domain, lib...). I found it hard to follow, so I asked for one folder per feature with `routes`,
+  `model` and `schema` files, plus a short comment at the top of every file saying what it's for.
+  I also kept pushing for simpler code in general, like plain `find` calls instead of long query
+  builder chains.
 
-- **TypeORM** instead of the query builder (Kysely) it started with, because it is what I know and
-  can explain in depth. The AI kept the migrations as hand-written SQL because the overlap
-  constraints cannot be expressed in TypeORM, which I agreed with.
-- **JWT access + refresh tokens** instead of the server-side session cookie it first built. It
-  implemented rotation and reuse detection on top of my request.
-- **Simpler structure.** Its first layout split each feature across many layer folders. I asked for
-  something anyone can read at a glance, and then for one folder per feature with `routes`, `model`
-  and `schema` files. I also asked for a header comment in every file.
-- **Commit identity and history:** small commits as we went, authored under my GitHub account.
+## Things I had to correct
 
-## Where I corrected, rejected or improved what the AI produced
+**The race-condition test passed too easily.** The test where 10 members try to book the same slot at
+the same time passed on the first run. That made me suspicious, because a concurrency test passing
+straight away doesn't tell you much. So I removed the database constraint and ran it again. It
+failed, with two bookings going through. With the constraint back it passed. That's the check that
+the test actually tests the rule and not just luck with timing.
 
-**1. A test that could pass for the wrong reason.**
-The first version of the "10 members book the same slot at once" test passed straight away. A
-concurrency test that passes first time does not prove much: requests might simply not have run in
-parallel. We temporarily removed the database exclusion constraint and re-ran it: the test failed
-(two bookings succeeded), and passed again once the constraint was back. Now I know the test
-really checks the guarantee and not the timing of the test runner.
+**Daylight saving.** When clocks go back, a time like 01:30 happens twice that night. Luxon quietly
+picks the second one. I didn't want to inherit that by accident, so we checked what the library does
+with a quick script first, then decided on the first occurrence and wrote tests for it (New York
+and London). Times that don't exist when clocks go forward are simply not offered.
 
-**2. Daylight saving: the library default was not the behaviour I wanted.**
-When clocks go back, a local time like 01:30 happens twice. Luxon silently picks the *second*
-occurrence. Rather than inherit that, we chose the first occurrence (the moment a wall clock first
-shows that time) and skip times that do not exist when clocks jump forward, and pinned both with
-tests for New York and London. We checked the library's actual behaviour with a small script before
-writing the slot code, instead of assuming it.
+**A refactor that broke every import.** When moving files into feature folders, the AI rewrote the
+import paths with a script, and the script cut three characters off each path (`auth.rou.js`). The
+type check caught it straight away. Its second attempt failed too, on short file names like `app`.
+What finally worked was rebuilding each import from what each file actually exports. I only treated
+it as done once the type check and all 94 tests passed again.
 
-**3. A bulk refactor that broke the code.**
-When restructuring into feature folders, the AI rewrote every import path with a script. The script
-had an off-by-three bug and produced paths like `./auth/auth.rou.js`. The type checker caught it
-immediately. A second path-based repair also failed on short names (`app`, `db`). The final fix
-rebuilt every import from the names each file actually exports, and the type check plus all 94 tests
-confirmed nothing changed in behaviour. Lesson: mechanical refactors are only done when the compiler
-and the tests say so.
+**A bad commit.** At one point a `git add` failed but the commit still went through with only a
+couple of deleted files in it. I saw it in `git show --stat`, undid it with a soft reset and redid it
+properly. It was never pushed.
 
-**4. A wrong commit, caught before pushing.**
-A `git add` failed on a path that no longer existed, but the commit still ran and contained only some
-deletions. Checking `git show --stat` showed it; it was undone with a soft reset (nothing lost) and
-redone. Nothing had been pushed.
+**UI details.** I asked it to take screenshots of every page so I could actually look at them. That
+showed some things I wouldn't have spotted in the code: the font drew zeros with a slash, which looks
+messy on a screen full of times; there was a small unlabelled number on each calendar day; and
+Chrome was giving the old "Asia/Calcutta" timezone name. All three got fixed.
 
-**5. Simplicity over cleverness.**
-I rejected several versions as harder to read than necessary: long query-builder chains became plain
-`find` calls, a callback-based token rotation became a function that returns the new tokens or
-`null`, and response fields the UI could work out itself were removed.
+## In short
 
-**6. UI details found by looking, not assuming.**
-Reviewing screenshots showed that the first body font draws every zero with a slash ("16:ØØ"), which
-is noisy on a screen full of times; an unlabelled number on each calendar day; and the old
-"Asia/Calcutta" name coming from the browser. All three were fixed: a different font, the count moved
-next to the day heading, and a grouped timezone picker that shows the current time in the chosen
-zone.
-
-## What I take responsibility for
-
-I can explain every part of this code: why the overlap rule lives in the database, how a reminder
-is delivered exactly once, how slots are laid out across daylight saving changes, and the security
-trade-offs in the token handling. Where the AI wrote code I did not want, I changed the approach;
-where it was right, I kept it and checked it with tests.
+The AI saved me a lot of typing, but the decisions are mine and I've gone through the code. I can
+explain why the overlap rule lives in the database, how a reminder gets delivered exactly once, how
+slots are worked out across daylight saving changes, and the trade-offs in how tokens are stored.
