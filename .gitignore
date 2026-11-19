@@ -6,3 +6,6 @@ dist/
 coverage/
 # assignment brief stays local
 *.pdf
+# Playwright output
+e2e/test-results/
+e2e/playwright-report/
