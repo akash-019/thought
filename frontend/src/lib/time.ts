@@ -29,6 +29,16 @@ export function dayLabel(iso: string, zone: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
+/**
+ * The other person's clock time, with their weekday added when it is a different date for them:
+ * "16:00", or "Tue 12:00" when it is still Tuesday in New York but already Wednesday for you.
+ */
+export function theirClock(iso: string, theirZone: string, yourZone: string): string {
+  const theirs = at(iso, theirZone);
+  const sameDate = theirs.toISODate() === at(iso, yourZone).toISODate();
+  return sameDate ? theirs.toFormat('HH:mm') : theirs.toFormat('ccc HH:mm');
+}
+
 /** True if two timezones show a different clock time at this moment (e.g. Singapore vs Kolkata). */
 export const clocksDiffer = (iso: string, zoneA: string, zoneB: string) => formatTime(iso, zoneA) !== formatTime(iso, zoneB);
 

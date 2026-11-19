@@ -7,6 +7,7 @@ import { Link } from 'react-router';
 import { api } from '../api/client';
 import type { Professional } from '../api/types';
 import { Empty, ErrorNote, Loading } from '../components/States';
+import { initials } from '../lib/names';
 import { cityOf } from '../lib/time';
 import { useLoad } from '../lib/useLoad';
 import { usePageTitle } from '../lib/usePageTitle';
@@ -46,13 +47,4 @@ export function ProfessionalsPage() {
       )}
     </>
   );
-}
-
-export function initials(name: string): string {
-  return name
-    .split(/\s+/)
-    .filter((w) => /^[A-Za-z]/.test(w) && !/^(dr|mr|ms|mrs)\.?$/i.test(w))
-    .slice(0, 2)
-    .map((w) => w[0]!.toUpperCase())
-    .join('');
 }

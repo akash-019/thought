@@ -14,11 +14,11 @@ import type { Professional } from '../api/types';
 import { useUser } from '../auth/AuthContext';
 import { ErrorNote, Loading } from '../components/States';
 import { useToast } from '../components/Toast';
+import { initials } from '../lib/names';
 import { cityOf, formatDateTime } from '../lib/time';
 import { useLoad } from '../lib/useLoad';
 import { usePageTitle } from '../lib/usePageTitle';
 import { SessionSummary } from '../sessions/SessionSummary';
-import { initials } from './ProfessionalsPage';
 import { SlotPicker } from './SlotPicker';
 
 export function ProfessionalPage() {

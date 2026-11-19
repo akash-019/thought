@@ -11,7 +11,8 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 import { api, errorMessage } from '../api/client';
 import type { Session, User } from '../api/types';
-import { cityOf, clocksDiffer, dayLabel, formatTime, relative } from '../lib/time';
+import { firstName } from '../lib/names';
+import { cityOf, clocksDiffer, dayLabel, formatTime, relative, theirClock } from '../lib/time';
 
 interface Props {
   session: Session;
@@ -28,7 +29,6 @@ export function SessionRow({ session: s, user, onChanged }: Props) {
   const isUpcoming = s.status === 'booked' && new Date(s.endAt) > new Date();
   const other = s.counterpart;
   const shortNotice = new Date(s.startAt).getTime() - Date.now() < 24 * 60 * 60 * 1000;
-  const firstName = other.name.replace(/^(Dr|Mr|Ms|Mrs)\.? /, '').split(' ')[0];
 
   async function cancel() {
     setBusy(true);
@@ -60,7 +60,7 @@ export function SessionRow({ session: s, user, onChanged }: Props) {
         </p>
         {clocksDiffer(s.startAt, user.timezone, other.timezone) && (
           <p className="session-their-time">
-            {formatTime(s.startAt, other.timezone)} – {formatTime(s.endAt, other.timezone)} for {firstName} in{' '}
+            {theirClock(s.startAt, other.timezone, user.timezone)} – {formatTime(s.endAt, other.timezone)} for {firstName(other.name)} in{' '}
             {cityOf(other.timezone)}
           </p>
         )}

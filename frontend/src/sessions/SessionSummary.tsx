@@ -1,9 +1,11 @@
 /**
  * File: src/sessions/SessionSummary.tsx
  *
- * The details block on confirmation screens: who, when (your time and theirs), how long.
+ * The details block on confirmation screens: who, when (your time and theirs, with their weekday
+ * when it is a different date for them), how long.
  */
-import { cityOf, formatDateTime, formatTime } from '../lib/time';
+import { firstName } from '../lib/names';
+import { cityOf, formatDateTime, theirClock } from '../lib/time';
 
 interface Props {
   withName: string;
@@ -33,7 +35,7 @@ export function SessionSummary({ withName, startAt, yourTimezone, theirTimezone,
           <span className="summary-sub">Your time, {cityOf(yourTimezone)}</span>
           {theirTimezone && theirTimezone !== yourTimezone && (
             <span className="summary-sub">
-              {formatTime(startAt, theirTimezone)} for {withName.split(' ')[0]} in {cityOf(theirTimezone)}
+              {theirClock(startAt, theirTimezone, yourTimezone)} for {firstName(withName)} in {cityOf(theirTimezone)}
             </span>
           )}
         </dd>
