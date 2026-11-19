@@ -9,7 +9,8 @@ import { z } from 'zod';
 const dateTime = z.iso.datetime({ offset: true }).transform((s) => new Date(s));
 
 export const bookSessionSchema = z.object({
-  professionalId: z.coerce.string(),
+  // Ids are numbers (sent as a string or a number); anything else is rejected before it reaches the database.
+  professionalId: z.coerce.string().regex(/^\d+$/, 'Invalid professional id.'),
   startAt: dateTime,
 });
 

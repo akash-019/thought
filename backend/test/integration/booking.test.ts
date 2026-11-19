@@ -74,6 +74,13 @@ describe('booking', () => {
     expect(proView.body.sessions[0].counterpart).toEqual({ name: 'Sam Example', timezone: 'UTC' });
   });
 
+  it('rejects a professional id that is not a number with a clear 400 (not a server error)', async () => {
+    const { agent } = await signUp(app, { role: 'member' });
+    const res = await agent.post('/api/sessions').send({ professionalId: 'abc', startAt: WED_10 });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
   it('rejects past slots, off-grid times, times outside hours and blocked dates', async () => {
     const pro = await signUpPro(app);
     await pro.agent.put('/api/me/blocked-dates').send({ dates: ['2027-01-07'] });
