@@ -50,7 +50,7 @@ You can also sign up as a new member or professional.
 docker compose run --rm test
 ```
 
-This runs 94 backend tests against a real Postgres database (a separate `booking_test` database):
+This runs 97 backend tests against a real Postgres database (a separate `booking_test` database):
 
 - **Unit tests** (`backend/test/unit`): slot generation, timezones and daylight saving changes,
   the 24-hour rule, reminder planning, password hashing.

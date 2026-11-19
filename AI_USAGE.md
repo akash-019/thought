@@ -41,7 +41,7 @@ and London). Times that don't exist when clocks go forward are simply not offere
 import paths with a script, and the script cut three characters off each path (`auth.rou.js`). The
 type check caught it straight away. Its second attempt failed too, on short file names like `app`.
 What finally worked was rebuilding each import from what each file actually exports. I only treated
-it as done once the type check and all 94 tests passed again.
+it as done once the type check and all the tests passed again.
 
 **A bad commit.** At one point a `git add` failed but the commit still went through with only a
 couple of deleted files in it. I saw it in `git show --stat`, undid it with a soft reset and redid it
