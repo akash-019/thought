@@ -73,6 +73,7 @@ paths:
         '201': { $ref: '#/components/responses/LoggedIn' }
         '400': { $ref: '#/components/responses/ValidationError' }
         '409': { description: 'EMAIL_TAKEN', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '429': { description: 'TOO_MANY_SIGNUPS: more than 20 new accounts from one IP in an hour', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
 
   /auth/login:
     post:
@@ -92,6 +93,7 @@ paths:
       responses:
         '200': { $ref: '#/components/responses/LoggedIn' }
         '401': { description: 'INVALID_CREDENTIALS', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '429': { description: 'TOO_MANY_ATTEMPTS: 10 failed log-ins from one IP in 15 minutes', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
 
   /auth/refresh:
     post:

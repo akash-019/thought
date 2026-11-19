@@ -29,11 +29,23 @@ export const config = {
   refreshTokenTtlDays: intEnv('REFRESH_TOKEN_TTL_DAYS', 7),
   /** Minimum notice for a booking, in minutes (optional extra from the brief). */
   minNoticeMinutes: intEnv('MIN_NOTICE_MINUTES', 120),
+  /** Most new accounts one IP address can create per hour (stops scripted mass sign-ups). */
+  signupsPerHour: intEnv('SIGNUPS_PER_HOUR', 20),
   /** Create fictional demo users and sessions on start-up when the database is empty. */
   seedDemoData: process.env.SEED_DEMO_DATA === 'true',
+  /**
+   * Also run the reminder worker inside the API process. For hosting with a single process
+   * (e.g. Render's free plan); with Docker Compose the worker is its own service instead.
+   */
+  runReminderWorker: process.env.RUN_REMINDER_WORKER === 'true',
+  /** Folder with the built frontend. When set, the API also serves the web app (single-service hosting). */
+  staticDir: process.env.STATIC_DIR || null,
   /** How often the reminder worker looks for due reminders. */
   reminderPollMs: intEnv('REMINDER_POLL_MS', 10_000),
 };
 
 /** The business rules the app needs. Production passes `config`; tests pass their own values. */
-export type Settings = Pick<typeof config, 'minNoticeMinutes' | 'accessTokenTtlMinutes' | 'refreshTokenTtlDays'>;
+export type Settings = Pick<
+  typeof config,
+  'minNoticeMinutes' | 'accessTokenTtlMinutes' | 'refreshTokenTtlDays' | 'signupsPerHour'
+>;

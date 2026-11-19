@@ -6,6 +6,7 @@
  * Takes its dependencies (database, clock, settings) as arguments so tests can pass a fixed clock.
  */
 import express from 'express';
+import helmet from 'helmet';
 import { readFileSync } from 'node:fs';
 import swaggerUi from 'swagger-ui-express';
 import type { DataSource } from 'typeorm';
@@ -27,6 +28,8 @@ export interface AppDeps {
   db: DataSource;
   clock: Clock;
   settings: Settings;
+  /** Folder of the built frontend to serve, if any (single-service hosting). */
+  staticDir?: string | null;
 }
 
 export function createApp(deps: AppDeps) {
@@ -45,7 +48,10 @@ export function createApp(deps: AppDeps) {
     res.json(openApiSpec);
   });
 
+  // Security headers on every API response (nosniff, no framing, HSTS, strict CSP...).
+  // Added after the docs because Swagger UI needs inline scripts.
   const api = express.Router();
+  api.use(helmet());
   api.use(loadUser(deps.db, deps.clock)); // sets req.user from the access token, if any
   api.use(authRoutes(deps));
   api.use(availabilityRoutes(deps));
@@ -56,6 +62,16 @@ export function createApp(deps: AppDeps) {
     throw notFound('No such endpoint.');
   });
   app.use('/api', api);
+
+  // Single-service hosting: also serve the built web app. Any other path loads index.html and
+  // React picks the page (same as the nginx setup used with Docker Compose).
+  if (deps.staticDir) {
+    const dir = deps.staticDir;
+    app.use(express.static(dir, { index: false, maxAge: '1h' }));
+    app.get(/^(?!\/api\/).*/, (_req, res) => {
+      res.sendFile('index.html', { root: dir });
+    });
+  }
 
   app.use(errorHandler);
   return app;

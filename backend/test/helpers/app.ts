@@ -16,7 +16,12 @@ export type Agent = ReturnType<typeof request.agent>;
  * Test defaults: no minimum notice, and long-lived tokens because tests move the fixed clock
  * forward by days. Token expiry itself is tested in auth.test.ts with short lifetimes.
  */
-export const TEST_SETTINGS: Settings = { minNoticeMinutes: 0, accessTokenTtlMinutes: 60 * 24 * 60, refreshTokenTtlDays: 90 };
+export const TEST_SETTINGS: Settings = {
+  minNoticeMinutes: 0,
+  accessTokenTtlMinutes: 60 * 24 * 60,
+  refreshTokenTtlDays: 90,
+  signupsPerHour: 10_000, // tests create many accounts on purpose; the limit itself is tested in auth.test.ts
+};
 
 export function makeApp(db: DataSource, clock: Clock, settings: Partial<Settings> = {}) {
   return createApp({ db, clock, settings: { ...TEST_SETTINGS, ...settings } });

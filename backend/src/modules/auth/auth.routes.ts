@@ -5,6 +5,7 @@
  * sign-up form. Sign up and log in return an access token + refresh token pair.
  */
 import { Router } from 'express';
+import { rateLimit } from 'express-rate-limit';
 import { requireUser, type AuthUser } from './auth.middleware.js';
 import { loginSchema, refreshTokenSchema, signupSchema } from './auth.schema.js';
 import { hashPassword, verifyPassword } from './password.js';
@@ -30,11 +31,40 @@ const dummyHash = hashPassword('not-a-real-password');
 export function authRoutes({ db, clock, settings }: AppDeps): Router {
   const router = Router();
 
+  // Slows down password guessing: after 10 failed log-ins from one IP in 15 minutes, log-in is
+  // refused for the rest of that window. Successful log-ins don't count.
+  const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 10,
+    skipSuccessfulRequests: true,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    handler: (_req, res) => {
+      res.status(429).json({
+        error: { code: 'TOO_MANY_ATTEMPTS', message: 'Too many failed log-in attempts. Please wait 15 minutes and try again.' },
+      });
+    },
+  });
+
+  // Registration is open (the brief asks for it), so cap how many accounts one IP can create
+  // per hour. Stops a script from flooding the app with fake members or professionals.
+  const signupLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    limit: settings.signupsPerHour,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    handler: (_req, res) => {
+      res.status(429).json({
+        error: { code: 'TOO_MANY_SIGNUPS', message: 'Too many new accounts from this network. Please try again in an hour.' },
+      });
+    },
+  });
+
   router.get('/timezones', (_req, res) => {
     res.json({ timezones: TIMEZONES });
   });
 
-  router.post('/auth/signup', async (req, res) => {
+  router.post('/auth/signup', signupLimiter, async (req, res) => {
     const input = signupSchema.parse(req.body);
     const passwordHash = await hashPassword(input.password);
     let saved;
@@ -55,7 +85,7 @@ export function authRoutes({ db, clock, settings }: AppDeps): Router {
     res.status(201).json({ user, ...(await issueTokens(db.manager, user, clock.now(), settings)) });
   });
 
-  router.post('/auth/login', async (req, res) => {
+  router.post('/auth/login', loginLimiter, async (req, res) => {
     const input = loginSchema.parse(req.body);
     const row = await db.manager.findOneBy(UserEntity, { email: input.email });
     const ok = await verifyPassword(input.password, row?.passwordHash ?? (await dummyHash));

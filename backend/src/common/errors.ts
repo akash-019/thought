@@ -36,6 +36,8 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: field + issue.message } });
   } else if (err?.type === 'entity.parse.failed') {
     res.status(400).json({ error: { code: 'INVALID_JSON', message: 'Request body is not valid JSON.' } });
+  } else if (err?.type === 'entity.too.large') {
+    res.status(413).json({ error: { code: 'BODY_TOO_LARGE', message: 'Request body is too large.' } });
   } else {
     console.error(err); // unexpected: log it, but never send internals to the client
     res.status(500).json({ error: { code: 'INTERNAL', message: 'Something went wrong. Please try again.' } });

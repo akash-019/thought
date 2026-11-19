@@ -138,6 +138,63 @@ describe('refresh token', () => {
   });
 });
 
+describe('security', () => {
+  it('blocks log-in after 10 failed attempts (brute-force protection)', async () => {
+    const limited = makeApp(db, clock); // fresh app = fresh counter
+    await request(limited).post('/api/auth/signup').send({
+      name: 'Target', email: 'target@example.com', password: 'password123', role: 'member', timezone: 'UTC',
+    });
+    for (let i = 0; i < 10; i++) {
+      const wrong = await request(limited).post('/api/auth/login').send({ email: 'target@example.com', password: `guess-${i}` });
+      expect(wrong.status).toBe(401);
+    }
+    const blocked = await request(limited).post('/api/auth/login').send({ email: 'target@example.com', password: 'password123' });
+    expect(blocked.status).toBe(429);
+    expect(blocked.body.error.code).toBe('TOO_MANY_ATTEMPTS');
+  });
+
+  it('limits how many accounts one IP can create per hour', async () => {
+    const limited = makeApp(db, clock, { signupsPerHour: 3 });
+    const signupN = (n: number) =>
+      request(limited).post('/api/auth/signup').send({
+        name: `Bulk ${n}`, email: `bulk${n}@example.com`, password: 'password123', role: 'professional', timezone: 'UTC',
+      });
+    for (let n = 1; n <= 3; n++) expect((await signupN(n)).status).toBe(201);
+    const fourth = await signupN(4);
+    expect(fourth.status).toBe(429);
+    expect(fourth.body.error.code).toBe('TOO_MANY_SIGNUPS');
+  });
+
+  it('sends security headers and never reveals the framework', async () => {
+    const res = await request(app).get('/api/timezones');
+    expect(res.headers['x-content-type-options']).toBe('nosniff');
+    expect(res.headers['x-frame-options']).toBe('SAMEORIGIN');
+    expect(res.headers['content-security-policy']).toBeDefined();
+    expect(res.headers['x-powered-by']).toBeUndefined();
+  });
+
+  it('never returns password hashes or emails of other users', async () => {
+    const pro = await request(app).post('/api/auth/signup').send({
+      name: 'Pro', email: 'pro-private@example.com', password: 'password123', role: 'professional', timezone: 'UTC',
+    });
+    const member = await signUp(app, { role: 'member' });
+    const list = await member.agent.get('/api/professionals');
+    const profile = await member.agent.get(`/api/professionals/${pro.body.user.id}`);
+    for (const body of [list.body, profile.body, pro.body]) {
+      expect(JSON.stringify(body)).not.toMatch(/scrypt\$|passwordHash|password_hash/);
+    }
+    expect(JSON.stringify(list.body)).not.toContain('pro-private@example.com');
+  });
+
+  it('rejects oversized and malformed request bodies', async () => {
+    const huge = await request(app).post('/api/auth/login').set('Content-Type', 'application/json').send(JSON.stringify({ email: 'a@example.com', password: 'x'.repeat(200_000) }));
+    expect(huge.status).toBe(413);
+    const broken = await request(app).post('/api/auth/login').set('Content-Type', 'application/json').send('{"email":');
+    expect(broken.status).toBe(400);
+    expect(broken.body.error.code).toBe('INVALID_JSON');
+  });
+});
+
 describe('logout', () => {
   it('revokes the refresh token so it can no longer be used', async () => {
     const { refreshToken } = await signUp(app, { role: 'member' });
