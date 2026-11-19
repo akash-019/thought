@@ -2,7 +2,7 @@
  * File: src/components/SearchInput.tsx
  *
  * A search box with a magnifier icon and a clear (×) button. Pressing Escape clears it.
- * Used to filter lists: professionals, timezones, sessions.
+ * Used to filter lists (professionals, sessions); the matching itself is in lib/search.ts.
  */
 interface Props {
   value: string;
@@ -33,11 +33,4 @@ export function SearchInput({ value, onChange, label, placeholder }: Props) {
       )}
     </div>
   );
-}
-
-/** Case- and accent-insensitive "does any of these texts contain the query?" */
-export function matches(query: string, ...texts: (string | null | undefined)[]): boolean {
-  const normalise = (t: string) => t.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
-  const q = normalise(query.trim());
-  return !q || texts.some((t) => t && normalise(t).includes(q));
 }

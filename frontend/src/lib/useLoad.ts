@@ -11,7 +11,7 @@ export function useLoad<T>(load: () => Promise<T>, deps: unknown[]) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // Re-run only when `deps` change (like useEffect), not when a new `load` arrow is passed each render.
   const run = useCallback(load, deps);
 
   const reload = useCallback(async () => {

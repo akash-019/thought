@@ -8,7 +8,7 @@
  */
 import { DateTime } from 'luxon';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { matches } from '../components/SearchInput';
+import { matches } from '../lib/search';
 
 interface Props {
   zones: string[];

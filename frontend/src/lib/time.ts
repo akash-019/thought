@@ -11,9 +11,6 @@ const at = (iso: string, zone: string) => DateTime.fromISO(iso, { zone });
 /** "15:30" */
 export const formatTime = (iso: string, zone: string) => at(iso, zone).toFormat('HH:mm');
 
-/** "Wed 6 Jan" */
-export const formatShortDate = (iso: string, zone: string) => at(iso, zone).toFormat('ccc d LLL');
-
 /** "Wednesday 6 January" for a YYYY-MM-DD calendar date */
 export const formatLongDate = (date: string) => DateTime.fromISO(date).toFormat('cccc d LLLL');
 
