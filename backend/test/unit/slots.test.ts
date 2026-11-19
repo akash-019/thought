@@ -5,14 +5,8 @@
  */
 import { DateTime } from 'luxon';
 import { describe, expect, it } from 'vitest';
-import type { WeeklyRule } from '../../src/availability/weekly-hours.js';
-import {
-  generateSlots,
-  groupByLocalDate,
-  isOfferedSlot,
-  localTimeToInstant,
-  type SlotQuery,
-} from '../../src/availability/slots.js';
+import { generateSlots, groupByLocalDate, isOfferedSlot, localTimeToInstant, type SlotQuery } from '../../src/modules/availability/slots.js';
+import type { WeeklyRule } from '../../src/modules/availability/weekly-hours.js';
 
 const iso = (dates: Date[]) => dates.map((d) => d.toISOString());
 const d = (s: string) => new Date(s);

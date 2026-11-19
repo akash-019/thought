@@ -4,9 +4,9 @@
  * Integration tests: the calendar, booking, validation, and no double-booking under concurrent requests.
  */
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { fixedClock } from '../../src/shared/clock.js';
 import { makeApp, signUp, signUpPro } from '../helpers/app.js';
 import { resetData, testDb } from '../helpers/db.js';
+import { fixedClock } from '../../src/common/clock.js';
 
 const db = await testDb();
 // "Now" is Monday 2027-01-04 10:00 UTC.

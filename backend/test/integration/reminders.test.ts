@@ -4,10 +4,10 @@
  * Integration tests: reminder scheduling and exactly-once delivery (repeat runs, parallel workers, downtime).
  */
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { fixedClock } from '../../src/shared/clock.js';
-import { processDueReminders } from '../../src/reminders/reminders.js';
 import { makeApp, signUp, signUpPro } from '../helpers/app.js';
 import { resetData, testDb } from '../helpers/db.js';
+import { fixedClock } from '../../src/common/clock.js';
+import { processDueReminders } from '../../src/modules/notifications/reminders.js';
 
 const db = await testDb();
 const clock = fixedClock('2027-01-04T10:00:00Z');

@@ -1,5 +1,5 @@
 /**
- * File: src/availability/slots.ts
+ * File: src/modules/availability/slots.ts
  *
  * Slot generation: turns a professional's weekly hours into bookable 50-minute slots.
  *

@@ -1,5 +1,5 @@
 /**
- * File: src/shared/timezones.ts
+ * File: src/common/timezones.ts
  *
  * The list of IANA timezones users can choose at sign-up, and a validator for them.
  */

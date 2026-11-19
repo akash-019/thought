@@ -6,9 +6,9 @@
  * Run with `npm run dev` (watch mode) or `npm start` (built code).
  */
 import { createApp } from './app.js';
+import { systemClock } from './common/clock.js';
 import { config } from './config.js';
 import { connect, runMigrations } from './db/data-source.js';
-import { systemClock } from './shared/clock.js';
 
 const db = await connect(config.databaseUrl);
 await runMigrations(db);

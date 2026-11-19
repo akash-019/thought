@@ -1,5 +1,5 @@
 /**
- * File: src/auth/auth.middleware.ts
+ * File: src/modules/auth/auth.middleware.ts
  *
  * Who is calling?
  * - loadUser middleware: reads the access token from `Authorization: Bearer <token>`,
@@ -9,10 +9,10 @@
  */
 import type { NextFunction, Request, Response } from 'express';
 import type { DataSource } from 'typeorm';
-import { UserEntity, type Role } from '../db/entities.js';
-import type { Clock } from '../shared/clock.js';
-import { forbidden, unauthorized } from '../shared/errors.js';
 import { verifyAccessToken } from './tokens.js';
+import { UserEntity, type Role } from './user.model.js';
+import type { Clock } from '../../common/clock.js';
+import { forbidden, unauthorized } from '../../common/errors.js';
 
 export interface AuthUser {
   id: string;

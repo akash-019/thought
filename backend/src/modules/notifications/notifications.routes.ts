@@ -1,5 +1,5 @@
 /**
- * File: src/reminders/notifications.routes.ts
+ * File: src/modules/notifications/notifications.routes.ts
  *
  * Routes for the in-app notification list:
  * - GET  /notifications           my latest 50 notifications + unread count
@@ -9,14 +9,13 @@
  */
 import { Router } from 'express';
 import { In, IsNull } from 'typeorm';
-import { z } from 'zod';
-import type { AppDeps } from '../app.js';
+import { NotificationEntity } from './notification.model.js';
 import { requireUser } from '../auth/auth.middleware.js';
-import { describeSessions } from '../booking/booking.routes.js';
-import { NotificationEntity, SessionEntity } from '../db/entities.js';
-import { notFound } from '../shared/errors.js';
-
-const idSchema = z.object({ id: z.string().regex(/^\d+$/, 'Invalid id.') });
+import { SessionEntity } from '../sessions/session.model.js';
+import { describeSessions } from '../sessions/sessions.routes.js';
+import type { AppDeps } from '../../app.js';
+import { notFound } from '../../common/errors.js';
+import { idParamSchema } from '../../common/schemas.js';
 
 export function notificationRoutes({ db, clock }: AppDeps): Router {
   const router = Router();
@@ -48,7 +47,7 @@ export function notificationRoutes({ db, clock }: AppDeps): Router {
 
   router.post('/notifications/:id/read', async (req, res) => {
     const user = requireUser(req);
-    const { id } = idSchema.parse(req.params);
+    const { id } = idParamSchema.parse(req.params);
     const result = await db.manager.update(NotificationEntity, { id, userId: user.id }, { readAt: clock.now() });
     if (!result.affected) throw notFound('Notification not found.');
     res.status(204).end();

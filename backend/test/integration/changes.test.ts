@@ -4,9 +4,9 @@
  * Integration tests: cancel and reschedule, the 24-hour rule, and atomic rescheduling.
  */
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { fixedClock } from '../../src/shared/clock.js';
 import { makeApp, signUp, signUpPro } from '../helpers/app.js';
 import { resetData, testDb } from '../helpers/db.js';
+import { fixedClock } from '../../src/common/clock.js';
 
 const db = await testDb();
 const clock = fixedClock('2027-01-04T10:00:00Z');

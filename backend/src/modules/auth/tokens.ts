@@ -1,5 +1,5 @@
 /**
- * File: src/auth/tokens.ts
+ * File: src/modules/auth/tokens.ts
  *
  * Login tokens: the access token + refresh token pattern.
  * - Access token: a signed JWT, valid 15 minutes, sent as `Authorization: Bearer <token>`.
@@ -9,11 +9,12 @@
  *   If an old, already-used refresh token is presented again, someone may have stolen it,
  *   so ALL of that user's refresh tokens are revoked ("reuse detection").
  */
-import { createHash, randomBytes } from 'node:crypto';
 import jwt from 'jsonwebtoken';
+import { createHash, randomBytes } from 'node:crypto';
 import { IsNull, type DataSource, type EntityManager } from 'typeorm';
-import { config, type Settings } from '../config.js';
-import { RefreshTokenEntity, UserEntity, type Role, type User } from '../db/entities.js';
+import { RefreshTokenEntity } from './refresh-token.model.js';
+import { UserEntity, type Role, type User } from './user.model.js';
+import { config, type Settings } from '../../config.js';
 
 type Lifetimes = Pick<Settings, 'accessTokenTtlMinutes' | 'refreshTokenTtlDays'>;
 

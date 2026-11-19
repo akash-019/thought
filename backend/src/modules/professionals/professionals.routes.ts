@@ -1,5 +1,5 @@
 /**
- * File: src/booking/professionals.routes.ts
+ * File: src/modules/professionals/professionals.routes.ts
  *
  * Routes for members to find a professional:
  * - GET /professionals            the list
@@ -9,15 +9,14 @@
  */
 import { Router } from 'express';
 import { LessThan, MoreThan } from 'typeorm';
-import { z } from 'zod';
-import type { AppDeps } from '../app.js';
 import { requireRole, requireUser } from '../auth/auth.middleware.js';
+import { UserEntity, type User } from '../auth/user.model.js';
 import { BOOKING_WINDOW_DAYS, generateSlots, groupByLocalDate } from '../availability/slots.js';
 import { loadBlockedDates, loadWeeklyRules } from '../availability/weekly-hours.js';
-import { SessionEntity, UserEntity, type User } from '../db/entities.js';
-import { notFound } from '../shared/errors.js';
-
-const idSchema = z.object({ id: z.string().regex(/^\d+$/, 'Invalid id.') });
+import { SessionEntity } from '../sessions/session.model.js';
+import type { AppDeps } from '../../app.js';
+import { notFound } from '../../common/errors.js';
+import { idParamSchema } from '../../common/schemas.js';
 
 /** Public profile: never the email or anything about bookings. */
 const publicProfile = (u: User) => ({ id: u.id, name: u.name, bio: u.bio, timezone: u.timezone });
@@ -39,12 +38,12 @@ export function professionalRoutes({ db, clock, settings }: AppDeps): Router {
 
   router.get('/professionals/:id', async (req, res) => {
     requireUser(req);
-    res.json({ professional: publicProfile(await findProfessional(idSchema.parse(req.params).id)) });
+    res.json({ professional: publicProfile(await findProfessional(idParamSchema.parse(req.params).id)) });
   });
 
   router.get('/professionals/:id/slots', async (req, res) => {
     const member = requireRole(req, 'member');
-    const pro = await findProfessional(idSchema.parse(req.params).id);
+    const pro = await findProfessional(idParamSchema.parse(req.params).id);
     const from = clock.now();
     const to = new Date(from.getTime() + BOOKING_WINDOW_DAYS * 86_400_000);
 

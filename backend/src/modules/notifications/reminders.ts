@@ -1,5 +1,5 @@
 /**
- * File: src/reminders/reminders.ts
+ * File: src/modules/notifications/reminders.ts
  *
  * Reminders: 24 hours and 1 hour before each session, for both the member and the professional.
  * - planReminders:       which reminders to create when a session is booked.
@@ -14,7 +14,8 @@
  * 4. notifications.reminder_id is UNIQUE: the database refuses a second notification for a reminder.
  */
 import type { DataSource } from 'typeorm';
-import { NotificationEntity, ReminderEntity, type ReminderKind } from '../db/entities.js';
+import { NotificationEntity } from './notification.model.js';
+import { ReminderEntity, type ReminderKind } from './reminder.model.js';
 
 const REMINDERS: { kind: ReminderKind; minutesBefore: number }[] = [
   { kind: '24h', minutesBefore: 24 * 60 },

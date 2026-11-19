@@ -1,5 +1,5 @@
 /**
- * File: src/booking/booking.routes.ts
+ * File: src/modules/sessions/sessions.routes.ts
  *
  * Routes for sessions:
  * - POST /sessions                  book a slot (members)
@@ -11,19 +11,14 @@
  */
 import { Router } from 'express';
 import { In, LessThanOrEqual, MoreThan, Not, type EntityManager } from 'typeorm';
-import { z } from 'zod';
-import type { AppDeps } from '../app.js';
+import { bookSession, cancelSession, memberCanChange, rescheduleSession } from './booking.js';
+import { SessionEntity, type Session } from './session.model.js';
+import { bookSessionSchema, listSessionsSchema, rescheduleSessionSchema } from './sessions.schema.js';
 import { requireRole, requireUser, type AuthUser } from '../auth/auth.middleware.js';
-import { SessionEntity, UserEntity, type Session } from '../db/entities.js';
-import { notFound } from '../shared/errors.js';
-import { bookSession, cancelSession, rescheduleSession } from './booking.service.js';
-import { memberCanChange } from './rules.js';
-
-const isoDate = z.iso.datetime({ offset: true }).transform((s) => new Date(s));
-const bookSchema = z.object({ professionalId: z.coerce.string(), startAt: isoDate });
-const rescheduleSchema = z.object({ startAt: isoDate });
-const idSchema = z.object({ id: z.string().regex(/^\d+$/, 'Invalid id.') });
-const listSchema = z.object({ scope: z.enum(['upcoming', 'past']).default('upcoming') });
+import { UserEntity } from '../auth/user.model.js';
+import type { AppDeps } from '../../app.js';
+import { notFound } from '../../common/errors.js';
+import { idParamSchema } from '../../common/schemas.js';
 
 /** WHERE condition for "sessions that belong to this user". */
 function ownedBy(user: AuthUser) {
@@ -58,7 +53,7 @@ export async function describeSessions(m: EntityManager, user: AuthUser, session
   });
 }
 
-export function bookingRoutes({ db, clock, settings }: AppDeps): Router {
+export function sessionRoutes({ db, clock, settings }: AppDeps): Router {
   const router = Router();
 
   /** Loads one of the caller's sessions, shaped for the UI. 404 if it is not theirs. */
@@ -71,14 +66,14 @@ export function bookingRoutes({ db, clock, settings }: AppDeps): Router {
 
   router.post('/sessions', async (req, res) => {
     const member = requireRole(req, 'member');
-    const { professionalId, startAt } = bookSchema.parse(req.body);
+    const { professionalId, startAt } = bookSessionSchema.parse(req.body);
     const id = await bookSession(db, { member, professionalId, start: startAt, now: clock.now(), settings });
     res.status(201).json({ session: await getOwnSession(member, id) });
   });
 
   router.get('/sessions', async (req, res) => {
     const user = requireUser(req);
-    const { scope } = listSchema.parse(req.query);
+    const { scope } = listSessionsSchema.parse(req.query);
     const now = clock.now();
     const mine = ownedBy(user);
 
@@ -104,20 +99,20 @@ export function bookingRoutes({ db, clock, settings }: AppDeps): Router {
 
   router.get('/sessions/:id', async (req, res) => {
     const user = requireUser(req);
-    res.json({ session: await getOwnSession(user, idSchema.parse(req.params).id) });
+    res.json({ session: await getOwnSession(user, idParamSchema.parse(req.params).id) });
   });
 
   router.post('/sessions/:id/cancel', async (req, res) => {
     const user = requireUser(req);
-    const { id } = idSchema.parse(req.params);
+    const { id } = idParamSchema.parse(req.params);
     await cancelSession(db, { user, sessionId: id, now: clock.now() });
     res.json({ session: await getOwnSession(user, id) });
   });
 
   router.post('/sessions/:id/reschedule', async (req, res) => {
     const member = requireRole(req, 'member');
-    const { id } = idSchema.parse(req.params);
-    const { startAt } = rescheduleSchema.parse(req.body);
+    const { id } = idParamSchema.parse(req.params);
+    const { startAt } = rescheduleSessionSchema.parse(req.body);
     const newId = await rescheduleSession(db, { member, sessionId: id, start: startAt, now: clock.now(), settings });
     res.json({ session: await getOwnSession(member, newId) });
   });

@@ -4,7 +4,7 @@
  * Unit tests: reading "HH:MM" times and checking weekly working hours.
  */
 import { describe, expect, it } from 'vitest';
-import { findScheduleProblem, sortRules, toMinutes } from '../../src/availability/weekly-hours.js';
+import { findScheduleProblem, sortRules, toMinutes } from '../../src/modules/availability/weekly-hours.js';
 
 describe('toMinutes', () => {
   it('turns valid times into minutes since midnight', () => {

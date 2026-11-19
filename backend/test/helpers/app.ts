@@ -5,10 +5,10 @@
  * that come back as logged-in HTTP clients.
  */
 import request from 'supertest';
-import { createApp } from '../../src/app.js';
 import type { DataSource } from 'typeorm';
+import { createApp } from '../../src/app.js';
+import type { Clock } from '../../src/common/clock.js';
 import type { Settings } from '../../src/config.js';
-import type { Clock } from '../../src/shared/clock.js';
 
 export type Agent = ReturnType<typeof request.agent>;
 

@@ -1,5 +1,5 @@
 /**
- * File: src/auth/password.ts
+ * File: src/modules/auth/password.ts
  *
  * Password hashing and checking with scrypt (built into Node, salted per user).
  */

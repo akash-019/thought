@@ -1,32 +1,18 @@
 /**
- * File: src/auth/auth.routes.ts
+ * File: src/modules/auth/auth.routes.ts
  *
  * Routes: sign up, log in, refresh tokens, log out, GET /me, and the timezone list for the
  * sign-up form. Sign up and log in return an access token + refresh token pair.
  */
 import { Router } from 'express';
-import { z } from 'zod';
-import type { AppDeps } from '../app.js';
-import { UserEntity, type User } from '../db/entities.js';
-import { conflict, dbError, unauthorized } from '../shared/errors.js';
-import { isValidTimezone, TIMEZONES } from '../shared/timezones.js';
 import { requireUser, type AuthUser } from './auth.middleware.js';
+import { loginSchema, refreshTokenSchema, signupSchema } from './auth.schema.js';
 import { hashPassword, verifyPassword } from './password.js';
 import { issueTokens, revokeRefreshToken, rotateRefreshToken } from './tokens.js';
-
-const email = z.preprocess((v) => (typeof v === 'string' ? v.trim().toLowerCase() : v), z.email().max(254));
-
-const signupSchema = z.object({
-  name: z.string().trim().min(1).max(100),
-  email,
-  password: z.string().min(8, 'Password must be at least 8 characters.').max(200),
-  role: z.enum(['member', 'professional']),
-  timezone: z.string().refine(isValidTimezone, 'Unknown timezone.'),
-  bio: z.string().trim().max(1000).optional(),
-});
-
-const loginSchema = z.object({ email, password: z.string().min(1).max(200) });
-const refreshSchema = z.object({ refreshToken: z.string().min(1).max(200) });
+import { UserEntity, type User } from './user.model.js';
+import type { AppDeps } from '../../app.js';
+import { conflict, dbError, unauthorized } from '../../common/errors.js';
+import { TIMEZONES } from '../../common/timezones.js';
 
 /** The user fields that are safe to send to the client (never the password hash). */
 const publicUser = (u: Pick<User, 'id' | 'name' | 'email' | 'role' | 'timezone'>): AuthUser => ({
@@ -80,7 +66,7 @@ export function authRoutes({ db, clock, settings }: AppDeps): Router {
 
   /** Swaps a valid refresh token for a new access + refresh token pair. */
   router.post('/auth/refresh', async (req, res) => {
-    const { refreshToken } = refreshSchema.parse(req.body);
+    const { refreshToken } = refreshTokenSchema.parse(req.body);
     const result = await rotateRefreshToken(db, refreshToken, clock.now(), settings);
     if (!result) throw unauthorized('Your session has ended. Please log in again.', 'INVALID_REFRESH_TOKEN');
     res.json({ user: publicUser(result.user), ...result.tokens });
@@ -88,7 +74,7 @@ export function authRoutes({ db, clock, settings }: AppDeps): Router {
 
   /** Revokes the refresh token. The client also discards its access token (valid at most 15 more minutes). */
   router.post('/auth/logout', async (req, res) => {
-    const { refreshToken } = refreshSchema.parse(req.body);
+    const { refreshToken } = refreshTokenSchema.parse(req.body);
     await revokeRefreshToken(db.manager, refreshToken, clock.now());
     res.status(204).end();
   });

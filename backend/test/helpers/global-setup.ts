@@ -4,8 +4,8 @@
  * Runs once before the integration tests: recreates the test database schema from the migrations.
  */
 import pg from 'pg';
-import { connect, runMigrations } from '../../src/db/data-source.js';
 import { TEST_DATABASE_URL } from './db.js';
+import { connect, runMigrations } from '../../src/db/data-source.js';
 
 /** Runs once per `vitest run`: wipe the test database schema and apply all migrations fresh. */
 export default async function setup() {

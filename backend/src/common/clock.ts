@@ -1,5 +1,5 @@
 /**
- * File: src/shared/clock.ts
+ * File: src/common/clock.ts
  *
  * The Clock abstraction: the only way code asks "what time is it now?".
  * Production uses the system clock; tests use fixedClock to test time rules (24h rule, reminders) exactly.

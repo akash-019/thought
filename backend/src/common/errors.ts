@@ -1,5 +1,5 @@
 /**
- * File: src/shared/errors.ts
+ * File: src/common/errors.ts
  *
  * Error helpers shared by all features.
  * - HttpError + shortcuts (badRequest, notFound, ...) that routes throw.

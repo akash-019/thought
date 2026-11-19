@@ -1,11 +1,12 @@
 /**
- * File: src/availability/weekly-hours.ts
+ * File: src/modules/availability/weekly-hours.ts
  *
  * Weekly working hours: checking "HH:MM" ranges (no overlaps, no overnight ranges), and
  * loading a professional's hours and blocked dates from the database.
  */
 import type { EntityManager } from 'typeorm';
-import { AvailabilityRuleEntity, BlockedDateEntity } from '../db/entities.js';
+import { AvailabilityRuleEntity } from './availability-rule.model.js';
+import { BlockedDateEntity } from './blocked-date.model.js';
 
 /** One working range, e.g. { weekday: 1, start: '09:00', end: '17:00' } = Monday 9 to 5 (professional's timezone). */
 export interface WeeklyRule {

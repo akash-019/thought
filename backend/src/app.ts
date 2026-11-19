@@ -5,20 +5,20 @@
  * every feature's routes under /api, the API docs at /api/docs, and the shared error handler.
  * Takes its dependencies (database, clock, settings) as arguments so tests can pass a fixed clock.
  */
-import { readFileSync } from 'node:fs';
 import express from 'express';
+import { readFileSync } from 'node:fs';
 import swaggerUi from 'swagger-ui-express';
 import type { DataSource } from 'typeorm';
 import { parse as parseYaml } from 'yaml';
-import { loadUser } from './auth/auth.middleware.js';
-import { authRoutes } from './auth/auth.routes.js';
-import { availabilityRoutes } from './availability/availability.routes.js';
-import { bookingRoutes } from './booking/booking.routes.js';
-import { professionalRoutes } from './booking/professionals.routes.js';
+import type { Clock } from './common/clock.js';
+import { errorHandler, notFound } from './common/errors.js';
 import type { Settings } from './config.js';
-import { notificationRoutes } from './reminders/notifications.routes.js';
-import type { Clock } from './shared/clock.js';
-import { errorHandler, notFound } from './shared/errors.js';
+import { loadUser } from './modules/auth/auth.middleware.js';
+import { authRoutes } from './modules/auth/auth.routes.js';
+import { availabilityRoutes } from './modules/availability/availability.routes.js';
+import { notificationRoutes } from './modules/notifications/notifications.routes.js';
+import { professionalRoutes } from './modules/professionals/professionals.routes.js';
+import { sessionRoutes } from './modules/sessions/sessions.routes.js';
 
 /** The API documentation (backend/openapi.yaml), shown at /api/docs. */
 const openApiSpec = parseYaml(readFileSync(new URL('../openapi.yaml', import.meta.url), 'utf8'));
@@ -50,7 +50,7 @@ export function createApp(deps: AppDeps) {
   api.use(authRoutes(deps));
   api.use(availabilityRoutes(deps));
   api.use(professionalRoutes(deps));
-  api.use(bookingRoutes(deps));
+  api.use(sessionRoutes(deps));
   api.use(notificationRoutes(deps));
   api.use(() => {
     throw notFound('No such endpoint.');

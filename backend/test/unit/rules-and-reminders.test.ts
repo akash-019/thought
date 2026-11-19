@@ -4,8 +4,8 @@
  * Unit tests: the 24-hour rule, booking time checks, reminder planning and delivery decisions.
  */
 import { describe, expect, it } from 'vitest';
-import { bookingTimeProblem, memberCanChange } from '../../src/booking/rules.js';
-import { decideDelivery, planReminders } from '../../src/reminders/reminders.js';
+import { decideDelivery, planReminders } from '../../src/modules/notifications/reminders.js';
+import { bookingTimeProblem, memberCanChange } from '../../src/modules/sessions/booking.js';
 
 const d = (s: string) => new Date(s);
 const START = d('2027-01-10T15:00:00Z');

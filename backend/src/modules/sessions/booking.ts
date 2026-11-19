@@ -1,5 +1,5 @@
 /**
- * File: src/booking/booking.service.ts
+ * File: src/modules/sessions/booking.ts
  *
  * The booking logic. Each action runs in ONE database transaction, so it either fully
  * happens or not at all:
@@ -13,14 +13,16 @@
  * error 23P01, which we turn into a clear "slot just taken" message.
  */
 import type { DataSource, EntityManager } from 'typeorm';
+import { SessionEntity } from './session.model.js';
 import type { AuthUser } from '../auth/auth.middleware.js';
+import { UserEntity } from '../auth/user.model.js';
 import { isOfferedSlot, sessionEnd } from '../availability/slots.js';
 import { loadBlockedDates, loadWeeklyRules } from '../availability/weekly-hours.js';
-import type { Settings } from '../config.js';
-import { NotificationEntity, ReminderEntity, SessionEntity, UserEntity, type NotificationType } from '../db/entities.js';
-import { planReminders } from '../reminders/reminders.js';
-import { badRequest, conflict, dbError, forbidden, notFound } from '../shared/errors.js';
-import { bookingTimeProblem, memberCanChange, WITHIN_CUTOFF_MESSAGE } from './rules.js';
+import { NotificationEntity, type NotificationType } from '../notifications/notification.model.js';
+import { ReminderEntity } from '../notifications/reminder.model.js';
+import { planReminders } from '../notifications/reminders.js';
+import { badRequest, conflict, dbError, forbidden, notFound } from '../../common/errors.js';
+import type { Settings } from '../../config.js';
 
 interface BookingRequest {
   member: AuthUser;
@@ -161,4 +163,31 @@ async function withOverlapMessages<T>(action: () => Promise<T>): Promise<T> {
     }
     throw conflict('SLOT_TAKEN', 'Sorry, this time was just booked. Please pick another slot.');
   }
+}
+
+// --- Time rules ------------------------------------------------------------------------------
+
+/**
+ * Members may cancel or reschedule only while the session is at least this far away.
+ * Measured in real elapsed time (milliseconds), not calendar days, so a daylight saving change
+ * in between does not stretch or shrink the window.
+ */
+export const MEMBER_CHANGE_CUTOFF_HOURS = 24;
+const HOUR_MS = 3_600_000;
+
+export function memberCanChange(sessionStart: Date, now: Date): boolean {
+  return sessionStart.getTime() - now.getTime() >= MEMBER_CHANGE_CUTOFF_HOURS * HOUR_MS;
+}
+
+export const WITHIN_CUTOFF_MESSAGE =
+  `Sessions can only be cancelled or rescheduled more than ${MEMBER_CHANGE_CUTOFF_HOURS} hours before they start. ` +
+  'Please contact your professional if you can no longer attend.';
+
+export type BookingTimeProblem = 'IN_PAST' | 'TOO_SOON' | null;
+
+/** Why a start time cannot be booked yet, independent of availability. */
+export function bookingTimeProblem(start: Date, now: Date, minNoticeMinutes: number): BookingTimeProblem {
+  if (start.getTime() <= now.getTime()) return 'IN_PAST';
+  if (start.getTime() < now.getTime() + minNoticeMinutes * 60_000) return 'TOO_SOON';
+  return null;
 }

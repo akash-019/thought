@@ -5,10 +5,10 @@
  * Every REMINDER_POLL_MS it asks the database for due reminders and delivers them as in-app
  * notifications. Because all state is in the database, restarting it never loses or repeats a reminder.
  */
+import { systemClock } from './common/clock.js';
 import { config } from './config.js';
 import { connect, runMigrations } from './db/data-source.js';
-import { systemClock } from './shared/clock.js';
-import { processDueReminders } from './reminders/reminders.js';
+import { processDueReminders } from './modules/notifications/reminders.js';
 
 /**
  * Reminder worker: a separate process that polls for due reminders every REMINDER_POLL_MS.

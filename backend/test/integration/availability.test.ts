@@ -4,9 +4,9 @@
  * Integration tests: professionals saving and reading weekly hours.
  */
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { fixedClock } from '../../src/shared/clock.js';
 import { makeApp, signUp } from '../helpers/app.js';
 import { resetData, testDb } from '../helpers/db.js';
+import { fixedClock } from '../../src/common/clock.js';
 
 const db = await testDb();
 const app = makeApp(db, fixedClock('2027-01-04T10:00:00Z'));

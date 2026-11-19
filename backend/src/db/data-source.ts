@@ -7,8 +7,14 @@
 import 'reflect-metadata';
 import pg from 'pg';
 import { DataSource } from 'typeorm';
-import { ENTITIES } from './entities.js';
 import { MIGRATIONS } from './migrations/index.js';
+import { RefreshTokenEntity } from '../modules/auth/refresh-token.model.js';
+import { UserEntity } from '../modules/auth/user.model.js';
+import { AvailabilityRuleEntity } from '../modules/availability/availability-rule.model.js';
+import { BlockedDateEntity } from '../modules/availability/blocked-date.model.js';
+import { NotificationEntity } from '../modules/notifications/notification.model.js';
+import { ReminderEntity } from '../modules/notifications/reminder.model.js';
+import { SessionEntity } from '../modules/sessions/session.model.js';
 
 // Return DATE columns as plain 'YYYY-MM-DD' strings. By default pg turns them into JS Dates at
 // local midnight of the *server*, which silently shifts calendar dates across timezones.
@@ -18,7 +24,16 @@ export function createDataSource(url: string): DataSource {
   return new DataSource({
     type: 'postgres',
     url,
-    entities: ENTITIES,
+    // Every model (table) of every module.
+    entities: [
+      UserEntity,
+      RefreshTokenEntity,
+      AvailabilityRuleEntity,
+      BlockedDateEntity,
+      SessionEntity,
+      ReminderEntity,
+      NotificationEntity,
+    ],
     migrations: MIGRATIONS,
     migrationsTransactionMode: 'each',
     // The schema is owned by the migrations, never auto-synced from the entities.

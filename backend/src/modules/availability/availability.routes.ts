@@ -1,5 +1,5 @@
 /**
- * File: src/availability/availability.routes.ts
+ * File: src/modules/availability/availability.routes.ts
  *
  * Routes for professionals to manage their own availability:
  * - GET/PUT /me/availability   weekly working hours
@@ -7,22 +7,13 @@
  * Saving replaces the whole list. Sessions that are already booked are never touched.
  */
 import { Router } from 'express';
-import { DateTime } from 'luxon';
-import { z } from 'zod';
-import type { AppDeps } from '../app.js';
-import { requireRole } from '../auth/auth.middleware.js';
-import { AvailabilityRuleEntity, BlockedDateEntity } from '../db/entities.js';
-import { badRequest } from '../shared/errors.js';
+import { AvailabilityRuleEntity } from './availability-rule.model.js';
+import { blockedDatesSchema, weeklyHoursSchema } from './availability.schema.js';
+import { BlockedDateEntity } from './blocked-date.model.js';
 import { findScheduleProblem, loadBlockedDates, loadWeeklyRules, sortRules } from './weekly-hours.js';
-
-const hoursSchema = z.object({
-  rules: z.array(z.object({ weekday: z.number().int(), start: z.string(), end: z.string() })),
-});
-
-const isDate = (v: string) => /^\d{4}-\d{2}-\d{2}$/.test(v) && DateTime.fromISO(v).isValid;
-const blockedSchema = z.object({
-  dates: z.array(z.string().refine(isDate, 'Dates must be YYYY-MM-DD.')).max(366),
-});
+import { requireRole } from '../auth/auth.middleware.js';
+import type { AppDeps } from '../../app.js';
+import { badRequest } from '../../common/errors.js';
 
 export function availabilityRoutes({ db }: AppDeps): Router {
   const router = Router();
@@ -34,7 +25,7 @@ export function availabilityRoutes({ db }: AppDeps): Router {
 
   router.put('/me/availability', async (req, res) => {
     const pro = requireRole(req, 'professional');
-    const { rules } = hoursSchema.parse(req.body);
+    const { rules } = weeklyHoursSchema.parse(req.body);
     const problem = findScheduleProblem(rules);
     if (problem) throw badRequest('INVALID_AVAILABILITY', problem);
 
@@ -54,7 +45,7 @@ export function availabilityRoutes({ db }: AppDeps): Router {
 
   router.put('/me/blocked-dates', async (req, res) => {
     const pro = requireRole(req, 'professional');
-    const dates = [...new Set(blockedSchema.parse(req.body).dates)].sort();
+    const dates = [...new Set(blockedDatesSchema.parse(req.body).dates)].sort();
 
     await db.transaction(async (m) => {
       await m.delete(BlockedDateEntity, { professionalId: pro.id });
