@@ -21,6 +21,8 @@ services:
     environment:
       DATABASE_URL: postgres://booking:booking@db:5432/booking
       PORT: "4000"
+      # Demo value so `docker compose up` works out of the box. Use a real secret in production.
+      JWT_SECRET: ${JWT_SECRET:-local-demo-secret-change-me}
     depends_on:
       db: { condition: service_healthy }
     ports:
