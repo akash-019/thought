@@ -103,7 +103,8 @@ npm install
 npm run dev                                  # app on http://localhost:5173 (forwards /api to :4000)
 ```
 
-Settings are environment variables with local defaults; see [backend/.env.example](backend/.env.example).
+Settings are environment variables with local defaults. [backend/.env.example](backend/.env.example)
+lists every one with a short explanation.
 
 ## Deploying to Render
 
