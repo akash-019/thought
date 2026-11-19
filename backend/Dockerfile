@@ -18,7 +18,7 @@ ENV NODE_ENV=production
 COPY --from=build /app/package.json ./
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
-COPY --from=build /app/migrations ./migrations
+COPY --from=build /app/openapi.yaml ./openapi.yaml
 USER node
 EXPOSE 4000
 CMD ["node", "dist/server.js"]

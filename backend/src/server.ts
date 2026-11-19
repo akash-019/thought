@@ -1,12 +1,18 @@
+/**
+ * File: src/server.ts
+ *
+ * API server entry point.
+ * Connects to Postgres, applies pending migrations, then starts the Express app on PORT.
+ * Run with `npm run dev` (watch mode) or `npm start` (built code).
+ */
 import { createApp } from './app.js';
 import { config } from './config.js';
-import { createDb } from './db/client.js';
-import { migrate } from './db/migrate.js';
-import { systemClock } from './lib/clock.js';
+import { connect, runMigrations } from './db/data-source.js';
+import { systemClock } from './shared/clock.js';
 
-await migrate(config.databaseUrl);
-const db = createDb(config.databaseUrl);
-const app = createApp({ db, clock: systemClock });
+const db = await connect(config.databaseUrl);
+await runMigrations(db);
+const app = createApp({ db, clock: systemClock, settings: config });
 
 const server = app.listen(config.port, () => {
   console.log(`api listening on :${config.port}`);

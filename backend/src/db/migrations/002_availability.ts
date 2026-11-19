@@ -1,3 +1,15 @@
+/**
+ * File: src/db/migrations/002_availability.ts
+ *
+ * Migration 2: professionals' weekly working hours.
+ */
+import type { MigrationInterface, QueryRunner } from 'typeorm';
+
+export class Availability1763510400002 implements MigrationInterface {
+  name = 'Availability1763510400002';
+
+  async up(q: QueryRunner): Promise<void> {
+    await q.query(`
 -- Weekly working hours, stored as wall-clock times in the professional's own timezone.
 -- They are converted to UTC per calendar date when slots are generated, so a 09:00 start
 -- stays 09:00 local across daylight saving changes.
@@ -11,3 +23,10 @@ CREATE TABLE availability_rules (
 );
 
 CREATE INDEX availability_rules_professional_idx ON availability_rules (professional_id, weekday);
+`);
+  }
+
+  async down(q: QueryRunner): Promise<void> {
+    await q.query(`DROP TABLE availability_rules;`);
+  }
+}

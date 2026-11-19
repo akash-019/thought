@@ -1,4 +1,11 @@
+/**
+ * File: src/db/migrate-cli.ts
+ *
+ * Command-line helper: `npm run migrate` applies pending migrations and exits.
+ */
 import { config } from '../config.js';
-import { migrate } from './migrate.js';
+import { connect, runMigrations } from './data-source.js';
 
-await migrate(config.databaseUrl);
+const ds = await connect(config.databaseUrl);
+await runMigrations(ds);
+await ds.destroy();

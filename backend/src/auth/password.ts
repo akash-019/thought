@@ -1,3 +1,8 @@
+/**
+ * File: src/auth/password.ts
+ *
+ * Password hashing and checking with scrypt (built into Node, salted per user).
+ */
 import { randomBytes, scrypt as scryptCb, timingSafeEqual, type ScryptOptions } from 'node:crypto';
 
 const KEY_LEN = 64;

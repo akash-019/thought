@@ -1,12 +1,18 @@
+/**
+ * File: test/unit/slots.test.ts
+ *
+ * Unit tests: slot layout, filtering, timezones and daylight saving changes.
+ */
+import { DateTime } from 'luxon';
 import { describe, expect, it } from 'vitest';
-import type { WeeklyRule } from '../../src/domain/availability.js';
+import type { WeeklyRule } from '../../src/availability/weekly-hours.js';
 import {
   generateSlots,
   groupByLocalDate,
   isOfferedSlot,
   localTimeToInstant,
   type SlotQuery,
-} from '../../src/domain/slots.js';
+} from '../../src/availability/slots.js';
 
 const iso = (dates: Date[]) => dates.map((d) => d.toISOString());
 const d = (s: string) => new Date(s);
@@ -185,14 +191,16 @@ describe('daylight saving time', () => {
     ]);
   });
 
-  it('localTimeToInstant: gap -> null, repeated time -> first occurrence', () => {
-    expect(localTimeToInstant({ year: 2027, month: 3, day: 14 }, 150, NY)).toBeNull(); // 02:30
-    expect(localTimeToInstant({ year: 2027, month: 11, day: 7 }, 90, NY)!.toUTC().toISO()).toBe(
+  it('localTimeToInstant: missing time -> null, repeated time -> first occurrence', () => {
+    const day = (iso: string) => DateTime.fromISO(iso, { zone: NY });
+    expect(localTimeToInstant(day('2027-03-14'), 150)).toBeNull(); // 02:30 does not exist
+    expect(localTimeToInstant(day('2027-11-07'), 90)!.toUTC().toISO()).toBe(
       '2027-11-07T05:30:00.000Z', // 01:30 EDT, not 01:30 EST (06:30Z)
     );
-    expect(localTimeToInstant({ year: 2027, month: 11, day: 7 }, 180, NY)!.toUTC().toISO()).toBe(
-      '2027-11-07T08:00:00.000Z', // 03:00 EST: not ambiguous, must not be shifted
+    expect(localTimeToInstant(day('2027-11-07'), 180)!.toUTC().toISO()).toBe(
+      '2027-11-07T08:00:00.000Z', // 03:00 EST happens once: unchanged
     );
+    expect(localTimeToInstant(day('2027-01-04'), 24 * 60)!.toUTC().toISO()).toBe('2027-01-05T05:00:00.000Z');
   });
 });
 

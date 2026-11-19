@@ -1,3 +1,8 @@
+/**
+ * File: test/unit/password.test.ts
+ *
+ * Unit tests: password hashing and checking.
+ */
 import { describe, expect, it } from 'vitest';
 import { hashPassword, verifyPassword } from '../../src/auth/password.js';
 

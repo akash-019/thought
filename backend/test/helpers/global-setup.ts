@@ -1,5 +1,10 @@
+/**
+ * File: test/helpers/global-setup.ts
+ *
+ * Runs once before the integration tests: recreates the test database schema from the migrations.
+ */
 import pg from 'pg';
-import { migrate } from '../../src/db/migrate.js';
+import { connect, runMigrations } from '../../src/db/data-source.js';
 import { TEST_DATABASE_URL } from './db.js';
 
 /** Runs once per `vitest run`: wipe the test database schema and apply all migrations fresh. */
@@ -15,5 +20,7 @@ export default async function setup() {
   }
   await client.query('DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;');
   await client.end();
-  await migrate(TEST_DATABASE_URL, () => {});
+  const ds = await connect(TEST_DATABASE_URL);
+  await runMigrations(ds, () => {});
+  await ds.destroy();
 }
