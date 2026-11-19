@@ -43,6 +43,14 @@ type check caught it straight away. Its second attempt failed too, on short file
 What finally worked was rebuilding each import from what each file actually exports. I only treated
 it as done once the type check and all the tests passed again.
 
+**A flaky end-to-end test.** The test where two members book the same time from two browsers
+failed 2 times out of 5. The screenshots showed the app was right every time: one member got the
+session, the other got "Sorry, this time was just booked" and fresh times. The bug was in the test:
+it sorted the list of results in place and then used that list to find the losing browser, so it
+sometimes looked at the wrong one. After the fix it passed 10 out of 10. I also switched the
+reminder worker off once to make sure the reminder test fails without it, so I know it isn't
+passing by accident.
+
 **A bad commit.** At one point a `git add` failed but the commit still went through with only a
 couple of deleted files in it. I saw it in `git show --stat`, undid it with a soft reset and redid it
 properly. It was never pushed.

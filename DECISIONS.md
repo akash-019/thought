@@ -213,8 +213,8 @@ queried every 10 seconds. That is fine at this scale; see "next steps" for a que
 - Timezone cannot be changed after sign-up (see assumptions).
 - No overnight working ranges (a professional working 22:00–02:00 enters two ranges on two days).
 - In the rare fall-back hour the second occurrence of a repeated time is never offered.
-- The frontend has no automated tests; its logic is thin and the rules it shows are enforced and
-  tested on the backend.
+- The end-to-end tests use the database directly for two "time travel" steps (moving a session
+  inside 24 hours, making a reminder due now) instead of waiting real hours.
 - Rate limits are kept in memory (per process, reset on restart). There is no audit log yet.
 
 ## What I would do next
@@ -225,7 +225,7 @@ queried every 10 seconds. That is fine at this scale; see "next steps" for a que
    queue if reminder volume grows; alerting when reminders are overdue.
 3. Refresh token in an httpOnly, SameSite cookie instead of `localStorage`.
 4. Let professionals reschedule (with the member's agreement) and add a waitlist for full days.
-5. Frontend tests for the booking flow (Playwright) and a CI pipeline running both suites.
+5. A CI pipeline running the three test suites (backend, frontend, end to end) on every push.
 6. Allow changing timezone, with a clear choice for professionals about what happens to their hours.
 
 ## Running this safely in production for a healthcare product

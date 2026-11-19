@@ -46,11 +46,13 @@ You can also sign up as a new member or professional.
 
 ## Running the tests
 
+There are three test suites, from fastest to most complete.
+
+**Backend: 117 tests** against a real Postgres database (a separate `booking_test` database):
+
 ```bash
 docker compose run --rm test
 ```
-
-This runs 117 backend tests against a real Postgres database (a separate `booking_test` database):
 
 - **Unit tests** (`backend/test/unit`): slot generation, timezones and daylight saving changes,
   the 24-hour rule, reminder planning, password hashing.
@@ -61,6 +63,29 @@ This runs 117 backend tests against a real Postgres database (a separate `bookin
 
 Without Docker for the tests themselves: start only the database with `docker compose up -d db`,
 then `cd backend && npm install && npm test`.
+
+**Frontend: 37 tests**, no backend needed (a few seconds):
+
+```bash
+cd frontend && npm install && npm test
+```
+
+Time and timezone formatting (including when the two people are on different dates), the booking
+calendar, the pick-then-confirm flow and its "time just taken" recovery, the 24-hour lock and
+cancel confirmation on session rows, and the API client's token refresh.
+
+**End to end: 13 browser tests** (Playwright) against the running app:
+
+```bash
+docker compose up --build -d          # the app on http://localhost:3000
+cd e2e && npm install && npx playwright install chromium
+npm test
+```
+
+Sign-up and log-in, the full booking journey (book, reschedule, cancel), two members booking the
+same time from two browsers at once, the 24-hour rule in the browser and the API, reminders
+delivered by the running worker, the professional's availability, and staying logged in when the
+access token expires. Set `BASE_URL` to test another deployment.
 
 ## Local development
 
@@ -89,7 +114,7 @@ The repository includes a Render Blueprint ([render.yaml](render.yaml)) for the 
    - **thought-db**: a managed Postgres database. It is a separate service on purpose: the app
      container's disk is wiped on every deploy, restart or sleep, so data kept inside it would be
      lost. The app connects to it through `DATABASE_URL`, which Render fills in.
-   - **thought**: one web service built from the root [Dockerfile](Dockerfile). It runs the API,
+   - **thought**: one web service built from [docker/app.Dockerfile](docker/app.Dockerfile). It runs the API,
      serves the web app, and delivers reminders, all in one process (Render's free plan has no
      background workers).
 
@@ -128,25 +153,34 @@ at 09:00 local across daylight saving changes.
 ### Folder structure
 
 ```
-backend/
-  src/
-    app.ts  server.ts  worker.ts  config.ts
-    modules/                     one folder per feature
-      auth/                      sign up, log in, tokens, who is calling
-      availability/              weekly hours, days off, slot generation
-      professionals/             list, profile, free slots
-      sessions/                  book, cancel, reschedule (+ the 24-hour rule)
-      notifications/             reminders and the in-app notification list
-    common/                      errors, clock, timezones, shared validation
-    db/                          connection, migrations, demo seed
-  test/unit  test/integration
-  openapi.yaml                   API documentation
-frontend/
-  src/
-    api/                         the one fetch wrapper (+ token refresh) and API types
-    auth/  professionals/  sessions/  availability/  notifications/
-    components/  lib/  styles.css
-docs/screenshots/
+thought/
+├── README.md  DECISIONS.md  AI_USAGE.md
+├── backend/
+│   ├── src/
+│   │   ├── app.ts  server.ts  worker.ts  config.ts
+│   │   ├── modules/                 one folder per feature
+│   │   │   ├── auth/                sign up, log in, tokens, who is calling
+│   │   │   ├── availability/        weekly hours, days off, slot generation
+│   │   │   ├── professionals/       list, profile, free slots
+│   │   │   ├── sessions/            book, cancel, reschedule (+ the 24-hour rule)
+│   │   │   └── notifications/       reminders and the in-app notification list
+│   │   ├── common/                  errors, clock, timezones, shared validation
+│   │   └── db/                      connection, migrations, demo seed
+│   ├── test/unit  test/integration
+│   └── openapi.yaml                 API documentation
+├── frontend/
+│   └── src/
+│       ├── api/                     the one fetch wrapper (+ token refresh) and API types
+│       ├── auth/  professionals/  sessions/  availability/  notifications/
+│       ├── components/  lib/  styles.css
+│       └── **/*.test.ts(x)          frontend unit and component tests
+├── e2e/                             browser end-to-end tests (Playwright)
+├── docker/
+│   ├── app.Dockerfile               one image for Render: API + web app + reminder worker
+│   └── postgres/                    creates the test database on first start
+├── docs/screenshots/
+├── docker-compose.yml               everything locally with one command
+└── render.yaml                      Render Blueprint
 ```
 
 Each feature folder holds its `*.routes.ts` (the endpoints), `*.schema.ts` (request validation),
