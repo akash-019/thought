@@ -78,3 +78,31 @@ export async function processDueReminders(db: DataSource, now: Date, limit = 500
     return counts;
   });
 }
+
+/**
+ * Runs processDueReminders every `pollMs` until the returned `stop()` is called. A failed round
+ * is logged and simply retried on the next one: nothing is lost because the state is in the database.
+ * Used by the separate worker process (worker.ts) or, on single-process hosting, inside the API.
+ */
+export function startReminderLoop(db: DataSource, now: () => Date, pollMs: number): { stop: () => void } {
+  let stopped = false;
+  let timer: NodeJS.Timeout | undefined;
+
+  async function round() {
+    try {
+      const result = await processDueReminders(db, now());
+      if (result.delivered || result.expired || result.cancelled) console.log('reminders processed', result);
+    } catch (err) {
+      console.error('reminder round failed (will retry)', err);
+    }
+    if (!stopped) timer = setTimeout(round, pollMs);
+  }
+
+  void round();
+  return {
+    stop() {
+      stopped = true;
+      clearTimeout(timer);
+    },
+  };
+}
