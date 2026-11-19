@@ -1,4 +1,5 @@
-# One image with everything, for single-service hosting such as Render (see render.yaml):
+# docker/app.Dockerfile: one image with everything, for single-service hosting such as Render
+# (see render.yaml). Build context is the repository root:
 # the API, the built web app (served by the API), and the reminder worker (inside the API).
 # For local use, docker-compose.yml runs these as separate services instead.
 

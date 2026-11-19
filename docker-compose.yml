@@ -19,7 +19,7 @@ services:
       POSTGRES_DB: booking
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./docker/initdb:/docker-entrypoint-initdb.d:ro
+      - ./docker/postgres:/docker-entrypoint-initdb.d:ro
     ports:
       - "5433:5432" # 5433 on the host to avoid clashing with a local Postgres
     healthcheck:
@@ -34,6 +34,7 @@ services:
       <<: *backend-env
       PORT: "4000"
       SEED_DEMO_DATA: "true" # fictional demo users on first start (empty database only)
+      SIGNUPS_PER_HOUR: "500" # local only, so repeated e2e runs don't hit the sign-up limit (default 20)
     depends_on:
       db: { condition: service_healthy }
     ports:
