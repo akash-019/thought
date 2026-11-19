@@ -41,6 +41,9 @@ The sections the brief asks for directly are: [preventing double-booking](#preve
 - **Notifications** are also created when a session is booked (for the professional), cancelled (for
   the other person) or rescheduled (for the professional). In a support context, silently losing a
   session is the worst outcome.
+- **Registration is open,** for members and professionals alike, as the brief asks ("a user can sign up
+  as a member or a professional"). Anyone can therefore call themselves a professional; see the
+  production section for how that would be gated.
 - **Minimum booking notice** (optional extra) is 2 hours, configurable with `MIN_NOTICE_MINUTES`.
 
 ## Preventing double-booking
@@ -162,6 +165,13 @@ queried every 10 seconds. That is fine at this scale; see "next steps" for a que
   is the standard trade-off for stateless access tokens.
 - **Passwords** are hashed with scrypt (Node built-in, per-user salt). Login gives the same error
   and similar timing whether or not the email exists.
+- **Brute force and bulk sign-up:** after 10 failed log-ins from one IP in 15 minutes, log-in answers
+  `429 TOO_MANY_ATTEMPTS` for the rest of that window (successful log-ins don't count). One IP can
+  create at most 20 accounts an hour (`SIGNUPS_PER_HOUR`), since registration is open. The counters
+  are in memory, so they reset on restart and are per instance; several instances would share them
+  through Redis.
+- **Security headers** on every API response (helmet): `nosniff`, no framing, HSTS, a strict
+  Content Security Policy, and no `X-Powered-By`. Request bodies are limited to 100 kB.
 - **Trade-off:** the frontend keeps tokens in `localStorage` so a reload keeps you logged in. That
   is readable by any script on the page, so it depends on the app having no XSS. An httpOnly cookie
   for the refresh token would be safer; see the production section.
@@ -170,6 +180,9 @@ queried every 10 seconds. That is fine at this scale; see "next steps" for a que
 
 - Every query is filtered by the caller's own id. Asking for someone else's session returns `404`,
   not `403`, so the response does not even confirm it exists.
+- `access-matrix.test.ts` calls every endpoint as five kinds of caller (nobody, the member on the
+  session, another member, the professional on the session, another professional) and checks each
+  status, so the whole access-control table is tested in one place.
 - Role checks: only members book and reschedule; only professionals edit availability.
 - A member viewing a calendar receives only free start times. Professionals see a member's name, not
   their email. The professional list exposes name, bio and timezone only.
@@ -181,6 +194,15 @@ queried every 10 seconds. That is fine at this scale; see "next steps" for a que
   this over separate controller and service layers to keep each feature in a few readable files.
 - **Polling the notification list** every 30 seconds in the UI instead of WebSockets or server-sent
   events: simple and enough for reminders measured in hours.
+- **The database is always a separate service,** never inside the app image. On hosts like Render the
+  app container's disk is wiped on every deploy, restart or sleep, which would delete all users,
+  sessions and reminders (the brief requires they survive a restart). A separate Postgres also lets
+  several app or worker instances share one source of truth, which is what the overlap constraints
+  and exactly-once reminders rely on.
+- **One process on Render.** Render's free plan has no background workers, so the hosted demo runs
+  the reminder loop inside the API process (`RUN_REMINDER_WORKER=true`) and the API also serves the
+  built web app (`STATIC_DIR`). Delivery stays exactly-once because the guarantees live in the
+  database, not in the process layout. With Docker Compose they are separate services.
 - **Slots are computed on request** from the weekly rules rather than stored. 4 weeks for one
   professional is a few hundred slots, which is cheap; it also means changing hours takes effect
   immediately.
@@ -193,7 +215,7 @@ queried every 10 seconds. That is fine at this scale; see "next steps" for a que
 - In the rare fall-back hour the second occurrence of a repeated time is never offered.
 - The frontend has no automated tests; its logic is thin and the rules it shows are enforced and
   tested on the backend.
-- Rate limiting, account lockout and audit logging are not implemented.
+- Rate limits are kept in memory (per process, reset on restart). There is no audit log yet.
 
 ## What I would do next
 
@@ -212,8 +234,11 @@ queried every 10 seconds. That is fine at this scale; see "next steps" for a que
   GDPR in Europe, HIPAA where US health data is involved), keep data in the right region, sign data
   processing agreements, and define retention and deletion. Session existence alone can be sensitive
   health information.
+- **Professional vetting:** professional accounts by invite or admin approval only, with checks on
+  identity, qualifications and licence before they appear to members; verified email and phone for
+  everyone; bot protection and rate limits on sign-up.
 - **Security:** TLS everywhere; encryption at rest and in backups; secrets in a manager rather than
-  environment files; MFA for professionals and staff; rate limiting and lockout on login; the refresh
+  environment files; MFA for professionals and staff; shared rate limits (Redis) and per-account lockout on login; the refresh
   token in an httpOnly cookie with CSRF protection; a strict Content Security Policy; dependency and
   container scanning; regular penetration tests.
 - **Auditability:** an append-only audit log of who viewed or changed which session and when, and
