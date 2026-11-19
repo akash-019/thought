@@ -29,10 +29,10 @@ export function availabilityRoutes({ db }: AppDeps): Router {
     const problem = findScheduleProblem(rules);
     if (problem) throw badRequest('INVALID_AVAILABILITY', problem);
 
-    await db.transaction(async (m) => {
-      await m.delete(AvailabilityRuleEntity, { professionalId: pro.id });
+    await db.transaction(async (tx) => {
+      await tx.delete(AvailabilityRuleEntity, { professionalId: pro.id });
       for (const r of rules) {
-        await m.insert(AvailabilityRuleEntity, { professionalId: pro.id, weekday: r.weekday, startLocal: r.start, endLocal: r.end });
+        await tx.insert(AvailabilityRuleEntity, { professionalId: pro.id, weekday: r.weekday, startLocal: r.start, endLocal: r.end });
       }
     });
     res.json({ timezone: pro.timezone, rules: sortRules(rules) });
@@ -47,10 +47,10 @@ export function availabilityRoutes({ db }: AppDeps): Router {
     const pro = requireRole(req, 'professional');
     const dates = [...new Set(blockedDatesSchema.parse(req.body).dates)].sort();
 
-    await db.transaction(async (m) => {
-      await m.delete(BlockedDateEntity, { professionalId: pro.id });
+    await db.transaction(async (tx) => {
+      await tx.delete(BlockedDateEntity, { professionalId: pro.id });
       for (const localDate of dates) {
-        await m.insert(BlockedDateEntity, { professionalId: pro.id, localDate });
+        await tx.insert(BlockedDateEntity, { professionalId: pro.id, localDate });
       }
     });
     res.json({ dates });

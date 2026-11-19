@@ -44,34 +44,43 @@ export const LOGGED_OUT_EVENT = 'auth:logged-out';
 // (a refresh token only works once).
 let refreshing: Promise<boolean> | null = null;
 
-function refreshTokens(): Promise<boolean> {
-  refreshing ??= (async () => {
-    const refreshToken = tokens.refresh();
-    if (!refreshToken) return false;
-    const res = await fetch('/api/auth/refresh', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken }),
-    });
-    if (!res.ok) return false;
-    tokens.save(await res.json());
-    return true;
-  })().finally(() => {
-    refreshing = null;
+/** Asks the backend for a new token pair. True if it worked. */
+async function requestNewTokens(): Promise<boolean> {
+  const refreshToken = tokens.refresh();
+  if (!refreshToken) return false;
+  const res = await fetch('/api/auth/refresh', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refreshToken }),
   });
+  if (!res.ok) return false;
+  tokens.save(await res.json());
+  return true;
+}
+
+/** Like requestNewTokens, but parallel callers share the one request that is already running. */
+function refreshTokens(): Promise<boolean> {
+  if (!refreshing) {
+    refreshing = requestNewTokens().finally(() => {
+      refreshing = null;
+    });
+  }
   return refreshing;
 }
 
 export async function api<T>(path: string, options: { method?: string; body?: unknown } = {}): Promise<T> {
-  const send = () =>
-    fetch(`/api${path}`, {
+  // Reads the access token each time, so a retry after refreshing uses the new one.
+  const send = () => {
+    const headers: Record<string, string> = {};
+    if (options.body !== undefined) headers['Content-Type'] = 'application/json';
+    const accessToken = tokens.access();
+    if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+    return fetch(`/api${path}`, {
       method: options.method ?? 'GET',
-      headers: {
-        ...(options.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
-        ...(tokens.access() ? { Authorization: `Bearer ${tokens.access()}` } : {}),
-      },
+      headers,
       body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
     });
+  };
 
   let res = await send();
   if (res.status === 401 && tokens.refresh()) {

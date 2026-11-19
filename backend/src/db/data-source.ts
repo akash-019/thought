@@ -57,7 +57,7 @@ export async function runMigrations(ds: DataSource, log: (msg: string) => void =
   try {
     await lock.query('SELECT pg_advisory_lock(727001)');
     const applied = await ds.runMigrations({ transaction: 'each' });
-    for (const m of applied) log(`migrated ${m.name}`);
+    for (const migration of applied) log(`migrated ${migration.name}`);
   } finally {
     await lock.query('SELECT pg_advisory_unlock(727001)').catch(() => {});
     await lock.release();

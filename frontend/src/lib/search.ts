@@ -6,7 +6,8 @@
 const normalise = (text: string) =>
   text
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    // After NFD, accents become separate "combining" characters (U+0300 to U+036F); remove them.
+    .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase();
 
 /** True if the query is empty, or any of the texts contains it ("sao" matches "São Paulo"). */

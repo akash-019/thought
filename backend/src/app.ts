@@ -68,7 +68,9 @@ export function createApp(deps: AppDeps) {
   if (deps.staticDir) {
     const dir = deps.staticDir;
     app.use(express.static(dir, { index: false, maxAge: '1h' }));
-    app.get(/^(?!\/api\/).*/, (_req, res) => {
+    // Every path that does NOT start with /api/ (the (?!...) part means "not followed by").
+    const NOT_AN_API_PATH = /^(?!\/api\/).*/;
+    app.get(NOT_AN_API_PATH, (_req, res) => {
       res.sendFile('index.html', { root: dir });
     });
   }

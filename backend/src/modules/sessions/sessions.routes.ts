@@ -29,11 +29,11 @@ function ownedBy(user: AuthUser) {
  * Turns sessions into what the UI shows, from `user`'s point of view: who the session is with,
  * and whether the cancel / reschedule buttons should be enabled.
  */
-export async function describeSessions(m: EntityManager, user: AuthUser, sessions: Session[], now: Date) {
+export async function describeSessions(db: EntityManager, user: AuthUser, sessions: Session[], now: Date) {
   if (sessions.length === 0) return [];
   const isMember = user.role === 'member';
   const otherId = (s: Session) => (isMember ? s.professionalId : s.memberId);
-  const others = await m.findBy(UserEntity, { id: In(sessions.map(otherId)) });
+  const others = await db.findBy(UserEntity, { id: In(sessions.map(otherId)) });
 
   return sessions.map((s) => {
     const other = others.find((u) => u.id === otherId(s))!;
@@ -50,7 +50,8 @@ export async function describeSessions(m: EntityManager, user: AuthUser, session
       counterpart: isMember
         ? { id: other.id, name: other.name, timezone: other.timezone }
         : { name: other.name, timezone: other.timezone },
-      canCancel: active && (!isMember || memberMayChange),
+      // Members: only 24h+ ahead. Professionals: any time until it ends.
+      canCancel: isMember ? memberMayChange : active,
       canReschedule: memberMayChange,
     };
   });
@@ -80,22 +81,24 @@ export function sessionRoutes({ db, clock, settings }: AppDeps): Router {
     const now = clock.now();
     const mine = ownedBy(user);
 
-    const sessions =
-      scope === 'upcoming'
-        ? // booked and not finished yet, soonest first
-          await db.manager.find(SessionEntity, {
-            where: { ...mine, status: 'booked', endAt: MoreThan(now) },
-            order: { startAt: 'ASC' },
-          })
-        : // finished, cancelled or rescheduled, most recent first
-          await db.manager.find(SessionEntity, {
-            where: [
-              { ...mine, status: Not('booked') },
-              { ...mine, endAt: LessThanOrEqual(now) },
-            ],
-            order: { startAt: 'DESC' },
-            take: 200,
-          });
+    let sessions: Session[];
+    if (scope === 'upcoming') {
+      // Booked and not finished yet, soonest first.
+      sessions = await db.manager.find(SessionEntity, {
+        where: { ...mine, status: 'booked', endAt: MoreThan(now) },
+        order: { startAt: 'ASC' },
+      });
+    } else {
+      // Finished, cancelled or rescheduled, most recent first. (Two conditions = "either".)
+      sessions = await db.manager.find(SessionEntity, {
+        where: [
+          { ...mine, status: Not('booked') },
+          { ...mine, endAt: LessThanOrEqual(now) },
+        ],
+        order: { startAt: 'DESC' },
+        take: 200,
+      });
+    }
 
     res.json({ sessions: await describeSessions(db.manager, user, sessions, now) });
   });

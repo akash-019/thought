@@ -34,9 +34,9 @@ interface BookingRequest {
 
 export async function bookSession(db: DataSource, req: BookingRequest): Promise<string> {
   return withOverlapMessages(() =>
-    db.transaction(async (m) => {
-      const sessionId = await insertSession(m, req);
-      await notify(m, req.professionalId, 'session_booked', sessionId);
+    db.transaction(async (tx) => {
+      const sessionId = await insertSession(tx, req);
+      await notify(tx, req.professionalId, 'session_booked', sessionId);
       return sessionId;
     }),
   );
@@ -45,14 +45,14 @@ export async function bookSession(db: DataSource, req: BookingRequest): Promise<
 /** Members: only 24h or more before the start. Professionals: any time before it ends. */
 export async function cancelSession(db: DataSource, req: { user: AuthUser; sessionId: string; now: Date }) {
   const { user, sessionId, now } = req;
-  await db.transaction(async (m) => {
-    const session = await lockOwnSession(m, user, sessionId);
+  await db.transaction(async (tx) => {
+    const session = await lockOwnSession(tx, user, sessionId);
     checkCanChange(session, user, now);
 
-    await m.update(SessionEntity, { id: session.id }, { status: 'cancelled', cancelledBy: user.role, cancelledAt: now });
-    await cancelReminders(m, session.id, now);
+    await tx.update(SessionEntity, { id: session.id }, { status: 'cancelled', cancelledBy: user.role, cancelledAt: now });
+    await cancelReminders(tx, session.id, now);
     const otherPerson = user.role === 'member' ? session.professionalId : session.memberId;
-    await notify(m, otherPerson, 'session_cancelled', session.id);
+    await notify(tx, otherPerson, 'session_cancelled', session.id);
   });
 }
 
@@ -67,17 +67,17 @@ export async function rescheduleSession(
 ): Promise<string> {
   const { member, sessionId, start, now, settings } = req;
   return withOverlapMessages(() =>
-    db.transaction(async (m) => {
-      const old = await lockOwnSession(m, member, sessionId);
+    db.transaction(async (tx) => {
+      const old = await lockOwnSession(tx, member, sessionId);
       checkCanChange(old, member, now);
       if (old.startAt.getTime() === start.getTime()) throw badRequest('SAME_SLOT', 'Please pick a different time.');
 
       // Free the old slot first, so the member may also move to a slot overlapping the old one.
-      await m.update(SessionEntity, { id: old.id }, { status: 'rescheduled', cancelledBy: 'member', cancelledAt: now });
-      await cancelReminders(m, old.id, now);
+      await tx.update(SessionEntity, { id: old.id }, { status: 'rescheduled', cancelledBy: 'member', cancelledAt: now });
+      await cancelReminders(tx, old.id, now);
 
-      const newId = await insertSession(m, { member, professionalId: old.professionalId, start, now, settings }, old.id);
-      await notify(m, old.professionalId, 'session_rescheduled', newId);
+      const newId = await insertSession(tx, { member, professionalId: old.professionalId, start, now, settings }, old.id);
+      await notify(tx, old.professionalId, 'session_rescheduled', newId);
       return newId;
     }),
   );
@@ -90,10 +90,10 @@ export async function rescheduleSession(
  * not blocked, not in the past), then saves the session and its reminders.
  * It does not check for clashes with other bookings itself: the database constraints do that.
  */
-async function insertSession(m: EntityManager, req: BookingRequest, rescheduledFromId?: string): Promise<string> {
+async function insertSession(tx: EntityManager, req: BookingRequest, rescheduledFromId?: string): Promise<string> {
   const { member, professionalId, start, now, settings } = req;
 
-  const pro = await m.findOneBy(UserEntity, { id: professionalId, role: 'professional' });
+  const pro = await tx.findOneBy(UserEntity, { id: professionalId, role: 'professional' });
   if (!pro) throw notFound('Professional not found.');
 
   const timeProblem = bookingTimeProblem(start, now, settings.minNoticeMinutes);
@@ -104,16 +104,16 @@ async function insertSession(m: EntityManager, req: BookingRequest, rescheduledF
 
   const offered = isOfferedSlot(
     {
-      rules: await loadWeeklyRules(m, pro.id),
+      rules: await loadWeeklyRules(tx, pro.id),
       timezone: pro.timezone,
-      blockedDates: await loadBlockedDates(m, pro.id),
+      blockedDates: await loadBlockedDates(tx, pro.id),
       earliestStart: now,
     },
     start,
   );
   if (!offered) throw badRequest('INVALID_SLOT', 'This time is not one of the professional’s available slots.');
 
-  const saved = await m.save(SessionEntity, {
+  const saved = await tx.save(SessionEntity, {
     memberId: member.id,
     professionalId: pro.id,
     startAt: start,
@@ -123,15 +123,15 @@ async function insertSession(m: EntityManager, req: BookingRequest, rescheduledF
   });
 
   for (const r of planReminders({ memberId: member.id, professionalId: pro.id, startAt: start }, now)) {
-    await m.insert(ReminderEntity, { sessionId: saved.id, userId: r.userId, kind: r.kind, fireAt: r.fireAt, status: 'pending' });
+    await tx.insert(ReminderEntity, { sessionId: saved.id, userId: r.userId, kind: r.kind, fireAt: r.fireAt, status: 'pending' });
   }
   return saved.id;
 }
 
 /** Loads the caller's session and locks it (SELECT ... FOR UPDATE) until the transaction ends. */
-async function lockOwnSession(m: EntityManager, user: AuthUser, sessionId: string) {
+async function lockOwnSession(tx: EntityManager, user: AuthUser, sessionId: string) {
   const owner = user.role === 'member' ? { memberId: user.id } : { professionalId: user.id };
-  const session = await m.findOne(SessionEntity, { where: { id: sessionId, ...owner }, lock: { mode: 'pessimistic_write' } });
+  const session = await tx.findOne(SessionEntity, { where: { id: sessionId, ...owner }, lock: { mode: 'pessimistic_write' } });
   // 404 (not 403) so we do not even reveal that someone else's session exists.
   if (!session) throw notFound('Session not found.');
   return session;
@@ -143,12 +143,12 @@ function checkCanChange(session: { status: string; startAt: Date; endAt: Date },
   if (user.role === 'member' && !memberCanChange(session.startAt, now)) throw forbidden('WITHIN_24H', WITHIN_CUTOFF_MESSAGE);
 }
 
-async function cancelReminders(m: EntityManager, sessionId: string, now: Date) {
-  await m.update(ReminderEntity, { sessionId, status: 'pending' }, { status: 'cancelled', processedAt: now });
+async function cancelReminders(tx: EntityManager, sessionId: string, now: Date) {
+  await tx.update(ReminderEntity, { sessionId, status: 'pending' }, { status: 'cancelled', processedAt: now });
 }
 
-async function notify(m: EntityManager, userId: string, type: NotificationType, sessionId: string) {
-  await m.insert(NotificationEntity, { userId, type, sessionId });
+async function notify(tx: EntityManager, userId: string, type: NotificationType, sessionId: string) {
+  await tx.insert(NotificationEntity, { userId, type, sessionId });
 }
 
 /** Runs a booking action and turns the database's "overlapping session" error into a clear 409. */

@@ -13,7 +13,7 @@ import { ErrorNote, Loading } from '../components/States';
 import { useToast } from '../components/Toast';
 import { UnsavedChangesGuard } from '../components/UnsavedChangesGuard';
 import { useLoad } from '../lib/useLoad';
-import { addHours, previewSessions } from './preview';
+import { addHours, previewSessions, toMinutes } from './preview';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -37,8 +37,10 @@ export function WeeklyHours() {
     setRules((all) => all.map((r, i) => (i === index ? { ...r, ...patch } : r)));
   const remove = (index: number) => setRules((all) => all.filter((_, i) => i !== index));
   const add = (weekday: number) => {
+    // A new range starts an hour after the day's last range (or at 09:00) and lasts 4 hours.
     const lastEnd = rules.filter((r) => r.weekday === weekday).at(-1)?.end;
-    const start = lastEnd && lastEnd < '20:00' ? addHours(lastEnd, 1) : '09:00';
+    let start = '09:00';
+    if (lastEnd && toMinutes(lastEnd) < toMinutes('20:00')) start = addHours(lastEnd, 1);
     setRules((all) => [...all, { weekday, start, end: addHours(start, 4) }]);
   };
 

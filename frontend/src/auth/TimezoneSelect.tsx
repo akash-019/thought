@@ -40,7 +40,10 @@ export function TimezoneSelect({ zones, value, onChange }: Props) {
   function onKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
-      if (!open) return setOpen(true);
+      if (!open) {
+        setOpen(true);
+        return;
+      }
       const step = e.key === 'ArrowDown' ? 1 : -1;
       setActive((i) => Math.min(Math.max(i + step, 0), results.length - 1));
     } else if (e.key === 'Enter' && open) {

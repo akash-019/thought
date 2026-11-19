@@ -46,7 +46,9 @@ export function NotificationBell() {
   // Close on Escape or a click outside the panel.
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') close();
+    };
     const onClick = (e: MouseEvent) => {
       if (panelRef.current && !panelRef.current.contains(e.target as Node)) close();
     };
@@ -66,7 +68,10 @@ export function NotificationBell() {
         aria-expanded={open}
         aria-label={unread ? `Notifications, ${unread} unread` : 'Notifications'}
         onClick={() => {
-          if (open) return close();
+          if (open) {
+            close();
+            return;
+          }
           setOpen(true);
           load().catch(() => {});
         }}

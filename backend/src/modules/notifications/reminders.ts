@@ -22,6 +22,9 @@ const REMINDERS: { kind: ReminderKind; minutesBefore: number }[] = [
   { kind: '1h', minutesBefore: 60 },
 ];
 
+/** The reminder's new status for each decision of the worker. */
+const STATUS_AFTER = { deliver: 'delivered', expire: 'expired', cancel: 'cancelled' } as const;
+
 /** Reminders to create for a new session. Times that have already passed are skipped. */
 export function planReminders(session: { memberId: string; professionalId: string; startAt: Date }, now: Date) {
   const planned: { userId: string; kind: ReminderKind; fireAt: Date }[] = [];
@@ -46,9 +49,9 @@ export function decideDelivery(sessionStatus: string, sessionStart: Date, now: D
 
 /** Delivers up to `limit` due reminders. Returns how many were delivered / expired / cancelled. */
 export async function processDueReminders(db: DataSource, now: Date, limit = 500) {
-  return db.transaction(async (m) => {
+  return db.transaction(async (tx) => {
     const due: { id: string; user_id: string; session_id: string; kind: ReminderKind; status: string; start_at: Date }[] =
-      await m.query(
+      await tx.query(
         `SELECT r.id, r.user_id, r.session_id, r.kind, s.status, s.start_at
            FROM reminders r
            JOIN sessions s ON s.id = r.session_id
@@ -63,7 +66,7 @@ export async function processDueReminders(db: DataSource, now: Date, limit = 500
     for (const r of due) {
       const decision = decideDelivery(r.status, r.start_at, now);
       if (decision === 'deliver') {
-        await m
+        await tx
           .createQueryBuilder()
           .insert()
           .into(NotificationEntity)
@@ -71,9 +74,9 @@ export async function processDueReminders(db: DataSource, now: Date, limit = 500
           .orIgnore() // ON CONFLICT DO NOTHING: never a second notification for one reminder
           .execute();
       }
-      const status = { deliver: 'delivered', expire: 'expired', cancel: 'cancelled' } as const;
-      await m.update(ReminderEntity, { id: r.id }, { status: status[decision], processedAt: now });
-      counts[status[decision]] += 1;
+      const newStatus = STATUS_AFTER[decision];
+      await tx.update(ReminderEntity, { id: r.id }, { status: newStatus, processedAt: now });
+      counts[newStatus] += 1;
     }
     return counts;
   });

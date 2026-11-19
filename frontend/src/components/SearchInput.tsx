@@ -24,7 +24,9 @@ export function SearchInput({ value, onChange, label, placeholder }: Props) {
         placeholder={placeholder ?? label}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        onKeyDown={(e) => e.key === 'Escape' && onChange('')}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') onChange('');
+        }}
       />
       {value && (
         <button type="button" className="icon-button search-clear" aria-label="Clear search" onClick={() => onChange('')}>

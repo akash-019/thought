@@ -18,6 +18,7 @@ export interface WeeklyRule {
 /** "09:30" -> 570 (minutes since midnight). Returns null if the text is not a valid time. */
 export function toMinutes(time: string): number | null {
   if (time === '24:00') return 24 * 60;
+  // "HH:MM" from 00:00 to 23:59; group 1 = hours, group 2 = minutes.
   const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(time);
   return match ? Number(match[1]) * 60 + Number(match[2]) : null;
 }

@@ -25,22 +25,36 @@ export interface TokenPair {
   refreshTokenExpiresAt: string;
 }
 
-const sha256 = (text: string) => createHash('sha256').update(text).digest('hex');
-const seconds = (d: Date) => Math.floor(d.getTime() / 1000);
+const MINUTE_MS = 60_000;
+const DAY_MS = 24 * 60 * MINUTE_MS;
+
+function sha256(text: string): string {
+  return createHash('sha256').update(text).digest('hex');
+}
+
+/** JWTs count time in whole seconds since 1970 ("Unix time"). */
+function toUnixSeconds(date: Date): number {
+  return Math.floor(date.getTime() / 1000);
+}
 
 /** Creates a new access token + refresh token for a user (sign up, log in, refresh). */
-export async function issueTokens(m: EntityManager, user: { id: string; role: Role }, now: Date, ttl: Lifetimes): Promise<TokenPair> {
-  // Access token: a JWT holding the user id and role. `iat` uses our clock so tests control expiry.
-  const accessExpiresAt = new Date(now.getTime() + ttl.accessTokenTtlMinutes * 60_000);
-  const accessToken = jwt.sign({ sub: user.id, role: user.role, iat: seconds(now) }, config.jwtSecret, {
+export async function issueTokens(
+  db: EntityManager,
+  user: { id: string; role: Role },
+  now: Date,
+  ttl: Lifetimes,
+): Promise<TokenPair> {
+  // Access token: a JWT holding the user id and role. `iat` (issued at) uses our clock so tests control expiry.
+  const accessExpiresAt = new Date(now.getTime() + ttl.accessTokenTtlMinutes * MINUTE_MS);
+  const accessToken = jwt.sign({ sub: user.id, role: user.role, iat: toUnixSeconds(now) }, config.jwtSecret, {
     algorithm: 'HS256',
     expiresIn: ttl.accessTokenTtlMinutes * 60,
   });
 
-  // Refresh token: random, stored hashed.
+  // Refresh token: random, and only its hash is stored.
   const refreshToken = randomBytes(32).toString('base64url');
-  const refreshExpiresAt = new Date(now.getTime() + ttl.refreshTokenTtlDays * 86_400_000);
-  await m.insert(RefreshTokenEntity, { userId: user.id, tokenHash: sha256(refreshToken), expiresAt: refreshExpiresAt });
+  const refreshExpiresAt = new Date(now.getTime() + ttl.refreshTokenTtlDays * DAY_MS);
+  await db.insert(RefreshTokenEntity, { userId: user.id, tokenHash: sha256(refreshToken), expiresAt: refreshExpiresAt });
 
   return {
     accessToken,
@@ -52,12 +66,15 @@ export async function issueTokens(m: EntityManager, user: { id: string; role: Ro
 
 /** Returns the user id from a valid access token, 'expired' if it has expired, or null if it is invalid. */
 export function verifyAccessToken(token: string, now: Date): { userId: string } | 'expired' | null {
+  let payload;
   try {
-    const payload = jwt.verify(token, config.jwtSecret, { algorithms: ['HS256'], clockTimestamp: seconds(now) });
-    return typeof payload === 'object' && typeof payload.sub === 'string' ? { userId: payload.sub } : null;
+    payload = jwt.verify(token, config.jwtSecret, { algorithms: ['HS256'], clockTimestamp: toUnixSeconds(now) });
   } catch (err) {
-    return err instanceof jwt.TokenExpiredError ? 'expired' : null;
+    if (err instanceof jwt.TokenExpiredError) return 'expired';
+    return null; // bad signature, malformed, wrong algorithm...
   }
+  if (typeof payload === 'string' || typeof payload.sub !== 'string') return null;
+  return { userId: payload.sub };
 }
 
 /**
@@ -70,8 +87,8 @@ export async function rotateRefreshToken(
   now: Date,
   ttl: Lifetimes,
 ): Promise<{ user: User; tokens: TokenPair } | null> {
-  return db.transaction(async (m) => {
-    const stored = await m.findOne(RefreshTokenEntity, {
+  return db.transaction(async (tx) => {
+    const stored = await tx.findOne(RefreshTokenEntity, {
       where: { tokenHash: sha256(refreshToken) },
       lock: { mode: 'pessimistic_write' },
     });
@@ -79,19 +96,20 @@ export async function rotateRefreshToken(
 
     if (stored.revokedAt) {
       // This token was already used (or logged out). Possible theft: log the user out everywhere.
-      await m.update(RefreshTokenEntity, { userId: stored.userId, revokedAt: IsNull() }, { revokedAt: now });
+      await tx.update(RefreshTokenEntity, { userId: stored.userId, revokedAt: IsNull() }, { revokedAt: now });
       return null;
     }
 
-    const user = await m.findOneBy(UserEntity, { id: stored.userId });
+    const user = await tx.findOneBy(UserEntity, { id: stored.userId });
     if (!user) return null;
 
-    await m.update(RefreshTokenEntity, { id: stored.id }, { revokedAt: now });
-    return { user, tokens: await issueTokens(m, user, now, ttl) };
+    await tx.update(RefreshTokenEntity, { id: stored.id }, { revokedAt: now });
+    const tokens = await issueTokens(tx, user, now, ttl);
+    return { user, tokens };
   });
 }
 
 /** Logout: the refresh token stops working. Unknown or already-revoked tokens are ignored. */
-export async function revokeRefreshToken(m: EntityManager, refreshToken: string, now: Date): Promise<void> {
-  await m.update(RefreshTokenEntity, { tokenHash: sha256(refreshToken), revokedAt: IsNull() }, { revokedAt: now });
+export async function revokeRefreshToken(db: EntityManager, refreshToken: string, now: Date): Promise<void> {
+  await db.update(RefreshTokenEntity, { tokenHash: sha256(refreshToken), revokedAt: IsNull() }, { revokedAt: now });
 }

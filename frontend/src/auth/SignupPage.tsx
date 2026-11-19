@@ -43,7 +43,10 @@ export function SignupPage() {
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (password !== confirm) return setError('The two passwords don’t match.');
+    if (password !== confirm) {
+      setError('The two passwords don’t match.');
+      return;
+    }
     setBusy(true);
     setError(null);
     try {

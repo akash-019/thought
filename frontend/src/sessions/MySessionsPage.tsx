@@ -37,6 +37,20 @@ export function MySessionsPage() {
   const shown = (data ?? []).filter((s) => matches(query, s.counterpart.name, formatDateTime(s.startAt, user.timezone)));
   usePageTitle(isMember ? 'My sessions' : 'Schedule');
 
+  // Under "No upcoming sessions": what to do next.
+  let emptyHint = null;
+  if (scope === 'upcoming') {
+    emptyHint = isMember ? (
+      <p>
+        <Link to="/professionals">Find a professional</Link> to book your first session.
+      </p>
+    ) : (
+      <p>
+        Members can book you once you’ve <Link to="/availability">set your working hours</Link>.
+      </p>
+    );
+  }
+
   return (
     <>
       <h1>{isMember ? 'My sessions' : 'Schedule'}</h1>
@@ -64,16 +78,7 @@ export function MySessionsPage() {
       {error && <ErrorNote message={error} onRetry={reload} />}
       {data && data.length === 0 && (
         <Empty title={scope === 'upcoming' ? 'No upcoming sessions' : 'No past sessions yet'}>
-          {scope === 'upcoming' &&
-            (isMember ? (
-              <p>
-                <Link to="/professionals">Find a professional</Link> to book your first session.
-              </p>
-            ) : (
-              <p>
-                Members can book you once you’ve <Link to="/availability">set your working hours</Link>.
-              </p>
-            ))}
+          {emptyHint}
         </Empty>
       )}
       {data && data.length >= SEARCH_FROM && (

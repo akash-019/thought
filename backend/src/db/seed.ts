@@ -56,7 +56,14 @@ export async function seedDemoData(db: DataSource, now = new Date()): Promise<bo
 
   const pros: User[] = [];
   for (const p of PROFESSIONALS) {
-    const pro = await db.manager.save(UserEntity, { ...pick(p), passwordHash, role: 'professional' as const });
+    const pro = await db.manager.save(UserEntity, {
+      name: p.name,
+      email: p.email,
+      timezone: p.timezone,
+      bio: p.bio,
+      passwordHash,
+      role: 'professional' as const,
+    });
     for (const h of p.hours) {
       await db.manager.insert(AvailabilityRuleEntity, { professionalId: pro.id, weekday: h.weekday, startLocal: h.start, endLocal: h.end });
     }
@@ -64,8 +71,8 @@ export async function seedDemoData(db: DataSource, now = new Date()): Promise<bo
   }
 
   const members: User[] = [];
-  for (const m of MEMBERS) {
-    members.push(await db.manager.save(UserEntity, { ...m, bio: null, passwordHash, role: 'member' as const }));
+  for (const member of MEMBERS) {
+    members.push(await db.manager.save(UserEntity, { ...member, bio: null, passwordHash, role: 'member' as const }));
   }
 
   // A few sessions: one soon (inside 24 hours, so it can no longer be changed), some later.
@@ -98,7 +105,6 @@ async function bookAround(db: DataSource, member: User, pro: User, now: Date, ho
   }).catch(() => {}); // a clash with another demo session is fine to skip
 }
 
-const pick = (p: (typeof PROFESSIONALS)[number]) => ({ name: p.name, email: p.email, timezone: p.timezone, bio: p.bio });
 
 // `npm run seed`
 if (import.meta.url === `file://${process.argv[1]}`) {

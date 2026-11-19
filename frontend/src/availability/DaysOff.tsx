@@ -26,6 +26,7 @@ export function DaysOff() {
   /** A day the professional wants to block that already has bookings: shown for confirmation. */
   const [pending, setPending] = useState<{ date: string; sessions: Session[] } | null>(null);
   const today = DateTime.now().toISODate()!;
+  const upcomingDaysOff = (data ?? []).filter((d) => d >= today);
 
   async function saveDates(dates: string[], message: string) {
     setSaveError(null);
@@ -45,7 +46,10 @@ export function DaysOff() {
     try {
       const { sessions } = await api<{ sessions: Session[] }>('/sessions?scope=upcoming');
       const onThatDay = sessions.filter((s) => DateTime.fromISO(s.startAt, { zone: user.timezone }).toISODate() === date);
-      if (onThatDay.length > 0) return setPending({ date, sessions: onThatDay });
+      if (onThatDay.length > 0) {
+        setPending({ date, sessions: onThatDay });
+        return;
+      }
     } catch {
       // If the check fails, still let them block the day.
     }
@@ -108,13 +112,11 @@ export function DaysOff() {
             </div>
           )}
           {saveError && <ErrorNote message={saveError} />}
-          {data.filter((d) => d >= today).length === 0 ? (
+          {upcomingDaysOff.length === 0 ? (
             <p className="muted">No days off planned.</p>
           ) : (
             <ul className="chips">
-              {data
-                .filter((d) => d >= today)
-                .map((d) => (
+              {upcomingDaysOff.map((d) => (
                   <li key={d} className="chip">
                     {formatLongDate(d)}
                     <button

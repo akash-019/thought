@@ -31,12 +31,9 @@ const RENAMED: Record<string, string> = {
 };
 
 /** IANA timezone names users can pick at sign-up (current names, sorted). "UTC" is added. */
-export const TIMEZONES: readonly string[] = [
-  'UTC',
-  ...[...new Set(Intl.supportedValuesOf('timeZone').map((zone) => RENAMED[zone] ?? zone))]
-    .filter((zone) => IANAZone.isValidZone(zone))
-    .sort(),
-];
+const currentNames = Intl.supportedValuesOf('timeZone').map((zone) => RENAMED[zone] ?? zone);
+const uniqueNames = [...new Set(currentNames)];
+export const TIMEZONES: readonly string[] = ['UTC', ...uniqueNames.filter((zone) => IANAZone.isValidZone(zone)).sort()];
 
 export function isValidTimezone(tz: string): boolean {
   return IANAZone.isValidZone(tz);

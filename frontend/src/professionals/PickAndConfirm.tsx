@@ -58,7 +58,27 @@ export function PickAndConfirm({ professional, text, previousStartAt, note, onCo
     <>
       {error && <ErrorNote message={error} />}
 
-      {!confirming || !selected ? (
+      {confirming && selected ? (
+        <section className="confirm" aria-labelledby="confirm-heading">
+          <h2 id="confirm-heading">{text.confirm}</h2>
+          <SessionSummary
+            withName={professional.name}
+            startAt={selected}
+            previousStartAt={previousStartAt}
+            yourTimezone={user.timezone}
+            theirTimezone={professional.timezone}
+          />
+          {note && <p className="muted small">{note}</p>}
+          <div className="button-row">
+            <button type="button" className="button button-primary" onClick={confirm} disabled={busy}>
+              {busy ? text.busy : text.button}
+            </button>
+            <button type="button" className="button button-quiet" onClick={() => setConfirming(false)} disabled={busy}>
+              Choose another time
+            </button>
+          </div>
+        </section>
+      ) : (
         <section aria-labelledby="pick-heading">
           <h2 id="pick-heading">{text.pick}</h2>
           <SlotPicker
@@ -82,26 +102,6 @@ export function PickAndConfirm({ professional, text, previousStartAt, note, onCo
                 </button>
               </>
             )}
-          </div>
-        </section>
-      ) : (
-        <section className="confirm" aria-labelledby="confirm-heading">
-          <h2 id="confirm-heading">{text.confirm}</h2>
-          <SessionSummary
-            withName={professional.name}
-            startAt={selected}
-            previousStartAt={previousStartAt}
-            yourTimezone={user.timezone}
-            theirTimezone={professional.timezone}
-          />
-          {note && <p className="muted small">{note}</p>}
-          <div className="button-row">
-            <button type="button" className="button button-primary" onClick={confirm} disabled={busy}>
-              {busy ? text.busy : text.button}
-            </button>
-            <button type="button" className="button button-quiet" onClick={() => setConfirming(false)} disabled={busy}>
-              Choose another time
-            </button>
           </div>
         </section>
       )}

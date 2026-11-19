@@ -71,15 +71,27 @@ export function SlotPicker({ professionalId, professionalName, refreshKey = 0, s
           {weeks.flat().map((date) => {
             const count = slotsByDate.get(date)?.length ?? 0;
             const isSelected = date === day;
+            const isToday = date === today;
+
+            const classes = ['calendar-day'];
+            if (count) classes.push('has-slots');
+            if (isSelected) classes.push('selected');
+            if (isToday) classes.push('today');
+
+            // Read out by screen readers, e.g. "Today, Thursday 19 November, 3 free times".
+            let label = formatLongDate(date);
+            if (isToday) label = `Today, ${label}`;
+            label += count === 0 ? ', no free times' : `, ${count} free time${count === 1 ? '' : 's'}`;
+
             return (
               <button
                 key={date}
                 type="button"
-                className={['calendar-day', count ? 'has-slots' : '', isSelected ? 'selected' : '', date === today ? 'today' : ''].join(' ')}
+                className={classes.join(' ')}
                 disabled={!count}
-                aria-current={date === today ? 'date' : undefined}
+                aria-current={isToday ? 'date' : undefined}
                 aria-pressed={isSelected}
-                aria-label={`${date === today ? 'Today, ' : ''}${formatLongDate(date)}${count ? `, ${count} free time${count > 1 ? 's' : ''}` : ', no free times'}`}
+                aria-label={label}
                 onClick={() => {
                   setDay(date);
                   onSelect(null);
@@ -106,6 +118,7 @@ export function SlotPicker({ professionalId, professionalName, refreshKey = 0, s
         </p>
         <div className="slot-list" role="radiogroup" aria-label="Choose a time">
           {daySlots.map((slot) => {
+            const theirDate = theirDateIfDifferent(slot.startAt, data.professionalTimezone, zone);
             const isSelected = slot.startAt === selected;
             return (
               <button
@@ -120,11 +133,7 @@ export function SlotPicker({ professionalId, professionalName, refreshKey = 0, s
                 {!sameClock && (
                   <span className="slot-their-time">
                     {formatTime(slot.startAt, data.professionalTimezone)} in {cityOf(data.professionalTimezone)}
-                    {theirDateIfDifferent(slot.startAt, data.professionalTimezone, zone) && (
-                      <span className="slot-their-date">
-                        {theirDateIfDifferent(slot.startAt, data.professionalTimezone, zone)}
-                      </span>
-                    )}
+                    {theirDate && <span className="slot-their-date">{theirDate}</span>}
                   </span>
                 )}
               </button>
