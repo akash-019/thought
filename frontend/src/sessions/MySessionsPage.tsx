@@ -2,30 +2,38 @@
  * File: src/sessions/MySessionsPage.tsx
  *
  * "My sessions" for members and "Schedule" for professionals: upcoming and past sessions.
+ * When a list has more than a handful of sessions, a search box appears (name or date).
  */
 import { Link } from 'react-router';
 import { useState } from 'react';
 import { api } from '../api/client';
 import type { Session } from '../api/types';
 import { useUser } from '../auth/AuthContext';
+import { matches, SearchInput } from '../components/SearchInput';
 import { Empty, ErrorNote, Loading } from '../components/States';
 import { useToast } from '../components/Toast';
-import { cityOf } from '../lib/time';
+import { cityOf, formatDateTime } from '../lib/time';
 import { useLoad } from '../lib/useLoad';
 import { usePageTitle } from '../lib/usePageTitle';
 import { SessionRow } from './SessionRow';
 
 type Scope = 'upcoming' | 'past';
 
+/** Show the search box only when a list is long enough to need it. */
+const SEARCH_FROM = 6;
+
 export function MySessionsPage() {
   const user = useUser();
   const toast = useToast();
   const [scope, setScope] = useState<Scope>('upcoming');
+  const [query, setQuery] = useState('');
   const { data, error, loading, reload } = useLoad(
     () => api<{ sessions: Session[] }>(`/sessions?scope=${scope}`).then((r) => r.sessions),
     [scope],
   );
   const isMember = user.role === 'member';
+  // Matches a name, or any part of "Saturday 21 November, 17:00" (so "21 Nov" and "Saturday" work).
+  const shown = (data ?? []).filter((s) => matches(query, s.counterpart.name, formatDateTime(s.startAt, user.timezone)));
   usePageTitle(isMember ? 'My sessions' : 'Schedule');
 
   return (
@@ -41,7 +49,10 @@ export function MySessionsPage() {
             role="tab"
             aria-selected={scope === s}
             className={scope === s ? 'tab active' : 'tab'}
-            onClick={() => setScope(s)}
+            onClick={() => {
+              setScope(s);
+              setQuery('');
+            }}
           >
             {s === 'upcoming' ? 'Upcoming' : 'Past'}
           </button>
@@ -64,9 +75,22 @@ export function MySessionsPage() {
             ))}
         </Empty>
       )}
-      {data && data.length > 0 && (
+      {data && data.length >= SEARCH_FROM && (
+        <SearchInput
+          value={query}
+          onChange={setQuery}
+          label="Search sessions"
+          placeholder={isMember ? 'Search by professional or date' : 'Search by member or date'}
+        />
+      )}
+      {data && data.length > 0 && shown.length === 0 && (
+        <Empty title={`No sessions match “${query}”`}>
+          <p>Try a name, a day (Monday) or a date (21 Nov).</p>
+        </Empty>
+      )}
+      {shown.length > 0 && (
         <ul className="session-list">
-          {data.map((s) => (
+          {shown.map((s) => (
             <SessionRow
               key={s.id}
               session={s}

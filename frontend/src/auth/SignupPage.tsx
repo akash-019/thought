@@ -1,7 +1,8 @@
 /**
  * File: src/auth/SignupPage.tsx
  *
- * Create an account: choose member or professional, and a timezone (defaults to this device's).
+ * Create an account: choose member or professional, a password (typed twice), and a timezone
+ * (defaults to this device's).
  */
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
@@ -12,6 +13,7 @@ import { useAuth } from './AuthContext';
 import { TimezoneSelect } from './TimezoneSelect';
 import { usePageTitle } from '../lib/usePageTitle';
 import { Brand } from '../components/Brand';
+import { PasswordInput } from '../components/PasswordInput';
 
 const ROLES: { value: Role; title: string; text: string }[] = [
   { value: 'member', title: 'I’m looking for support', text: 'Find a professional and book sessions.' },
@@ -25,6 +27,8 @@ export function SignupPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const mismatch = confirm.length > 0 && confirm !== password;
   const [bio, setBio] = useState('');
   const [timezone, setTimezone] = useState(browserTimezone());
   const [timezones, setTimezones] = useState<string[]>([]);
@@ -39,6 +43,7 @@ export function SignupPage() {
 
   async function submit(e: FormEvent) {
     e.preventDefault();
+    if (password !== confirm) return setError('The two passwords don’t match.');
     setBusy(true);
     setError(null);
     try {
@@ -84,8 +89,7 @@ export function SignupPage() {
           </label>
           <label className="field">
             <span>Password</span>
-            <input
-              type="password"
+            <PasswordInput
               autoComplete="new-password"
               required
               minLength={8}
@@ -93,6 +97,22 @@ export function SignupPage() {
               onChange={(e) => setPassword(e.target.value)}
             />
             <small>At least 8 characters.</small>
+          </label>
+          <label className="field">
+            <span>Confirm password</span>
+            <PasswordInput
+              autoComplete="new-password"
+              required
+              value={confirm}
+              aria-invalid={mismatch}
+              aria-describedby="confirm-hint"
+              onChange={(e) => setConfirm(e.target.value)}
+            />
+            {mismatch && (
+              <small id="confirm-hint" className="field-error">
+                Passwords don’t match.
+              </small>
+            )}
           </label>
           <TimezoneSelect zones={timezones} value={timezone} onChange={setTimezone} />
           {role === 'professional' && (

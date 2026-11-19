@@ -9,6 +9,7 @@ import { errorMessage } from '../api/client';
 import { useAuth } from './AuthContext';
 import { usePageTitle } from '../lib/usePageTitle';
 import { Brand } from '../components/Brand';
+import { PasswordInput } from '../components/PasswordInput';
 
 export function LoginPage() {
   usePageTitle('Log in');
@@ -45,8 +46,7 @@ export function LoginPage() {
           </label>
           <label className="field">
             <span>Password</span>
-            <input
-              type="password"
+            <PasswordInput
               autoComplete="current-password"
               required
               value={password}

@@ -395,9 +395,11 @@ a {
   gap: 0.3rem;
 }
 
-.field > span {
+.field > span,
+.field > label {
   font-weight: 600;
 }
+
 
 .field small {
   color: var(--ink-soft);
@@ -419,6 +421,15 @@ input:focus,
 select:focus,
 textarea:focus {
   border-color: var(--tide);
+}
+
+.field small.field-error {
+  color: var(--alert);
+  font-weight: 600;
+}
+
+input[aria-invalid='true'] {
+  border-color: var(--alert);
 }
 
 .form-error {
@@ -1167,4 +1178,152 @@ textarea:focus {
   font-weight: 400;
   font-size: 0.9rem;
   color: var(--alert);
+}
+
+/* --- Search box ------------------------------------------------------------------------------ */
+
+.search {
+  position: relative;
+  max-width: 420px;
+  margin: 1.25rem 0 0.5rem;
+}
+
+.search input {
+  width: 100%;
+  padding-left: 2.4rem;
+  padding-right: 2.4rem;
+}
+
+/* Hide the browser's own clear button; we show our own. */
+.search input::-webkit-search-cancel-button {
+  appearance: none;
+}
+
+.search-icon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ink-soft);
+  pointer-events: none;
+}
+
+.search-clear {
+  position: absolute;
+  right: 0.4rem;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.search-count {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+}
+
+/* --- Password field with show/hide ----------------------------------------------------------- */
+
+.password {
+  position: relative;
+}
+
+.password input {
+  width: 100%;
+  padding-right: 2.75rem;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 0.35rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.password-toggle:hover {
+  background: var(--mist);
+  color: var(--ink);
+}
+
+/* --- Searchable select (timezone) ------------------------------------------------------------ */
+
+.combo {
+  position: relative;
+}
+
+.combo input {
+  width: 100%;
+  padding-right: 2.5rem;
+  cursor: pointer;
+}
+
+.combo input:focus {
+  cursor: text;
+}
+
+.combo-chevron {
+  position: absolute;
+  right: 0.85rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ink-soft);
+  pointer-events: none;
+}
+
+.combo-list {
+  position: absolute;
+  z-index: 30;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+  max-height: 260px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0.25rem;
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lift);
+}
+
+.combo-option {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0.65rem;
+  border-radius: var(--radius-small);
+  cursor: pointer;
+}
+
+.combo-option.active {
+  background: var(--mist);
+}
+
+.combo-option[aria-selected='true'] {
+  font-weight: 600;
+  color: var(--tide-dark);
+}
+
+.combo-option-meta {
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.combo-empty {
+  padding: 0.6rem;
+  color: var(--ink-soft);
+}
+
+.field small {
+  line-height: 1.4;
 }

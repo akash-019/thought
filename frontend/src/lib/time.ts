@@ -60,6 +60,9 @@ const RENAMED: Record<string, string> = {
   'Europe/Kiev': 'Europe/Kyiv',
   'Atlantic/Faeroe': 'Atlantic/Faroe',
   'Pacific/Truk': 'Pacific/Chuuk',
+  'America/Godthab': 'America/Nuuk',
+  'America/Buenos_Aires': 'America/Argentina/Buenos_Aires',
+  'America/Indianapolis': 'America/Indiana/Indianapolis',
 };
 
 /** The browser's timezone (with old names updated), used as the default choice at sign-up. */

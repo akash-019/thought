@@ -1,12 +1,14 @@
 /**
  * File: src/auth/TimezoneSelect.tsx
  *
- * Timezone picker for sign-up. Zones are grouped by region and labelled with the city and
- * current UTC offset ("Kolkata, GMT+5:30"). Below it, the current time in the chosen zone,
+ * Timezone picker for sign-up: one searchable box. It shows the chosen zone ("Kolkata, GMT+5:30");
+ * click or type to filter 400+ zones by city, region or offset ("new y", "+5:30"), then pick with
+ * the mouse or the keyboard (arrow keys, Enter, Escape). Below it, the current time in that zone,
  * so people can check they picked the right one.
  */
 import { DateTime } from 'luxon';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { matches } from '../components/SearchInput';
 
 interface Props {
   zones: string[];
@@ -16,44 +18,112 @@ interface Props {
 
 export function TimezoneSelect({ zones, value, onChange }: Props) {
   const now = useNow();
-  const groups = groupByRegion(zones.includes(value) ? zones : [value, ...zones]);
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [active, setActive] = useState(0);
+  const listRef = useRef<HTMLUListElement>(null);
+
+  const all = useMemo(() => (zones.includes(value) ? zones : [value, ...zones]), [zones, value]);
+  const results = useMemo(() => all.filter((z) => matches(query, z.replaceAll('_', ' '), label(z))), [all, query]);
+
+  // Keep the highlighted option in view while moving with the arrow keys.
+  useEffect(() => {
+    listRef.current?.children[active]?.scrollIntoView({ block: 'nearest' });
+  }, [active]);
+
+  function choose(zone: string) {
+    onChange(zone);
+    setOpen(false);
+    setQuery('');
+  }
+
+  function onKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!open) return setOpen(true);
+      const step = e.key === 'ArrowDown' ? 1 : -1;
+      setActive((i) => Math.min(Math.max(i + step, 0), results.length - 1));
+    } else if (e.key === 'Enter' && open) {
+      e.preventDefault();
+      if (results[active]) choose(results[active]);
+    } else if (e.key === 'Escape') {
+      setOpen(false);
+      setQuery('');
+    }
+  }
 
   return (
-    <label className="field">
-      <span>Timezone</span>
-      <select value={value} onChange={(e) => onChange(e.target.value)}>
-        {groups.map(([region, list]) => (
-          <optgroup key={region} label={region}>
-            {list.map((zone) => (
-              <option key={zone} value={zone}>
-                {label(zone)}
-              </option>
+    <div className="field">
+      <label htmlFor="timezone">Timezone</label>
+      <div className="combo">
+        <input
+          id="timezone"
+          role="combobox"
+          aria-expanded={open}
+          aria-controls="timezone-list"
+          aria-autocomplete="list"
+          aria-activedescendant={open && results[active] ? `tz-${active}` : undefined}
+          autoComplete="off"
+          value={open ? query : label(value)}
+          placeholder={label(value)}
+          onFocus={() => {
+            setOpen(true);
+            setActive(Math.max(results.indexOf(value), 0));
+          }}
+          onBlur={() => {
+            setOpen(false);
+            setQuery('');
+          }}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setActive(0);
+            setOpen(true);
+          }}
+          onKeyDown={onKeyDown}
+        />
+        <svg className="combo-chevron" width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="m6 9 6 6 6-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+        {open && (
+          <ul className="combo-list" id="timezone-list" role="listbox" ref={listRef}>
+            {results.length === 0 && <li className="combo-empty">No timezone matches “{query}”</li>}
+            {results.map((zone, i) => (
+              <li
+                key={zone}
+                id={`tz-${i}`}
+                role="option"
+                aria-selected={zone === value}
+                className={i === active ? 'combo-option active' : 'combo-option'}
+                // mousedown (not click) so it fires before the input loses focus
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  choose(zone);
+                }}
+                onMouseEnter={() => setActive(i)}
+              >
+                <span>{city(zone)}</span>
+                <span className="combo-option-meta">
+                  {region(zone)}, {offset(zone)}
+                </span>
+              </li>
             ))}
-          </optgroup>
-        ))}
-      </select>
+          </ul>
+        )}
+      </div>
       <small>
-        Your time there now: <strong>{now.setZone(value).toFormat('HH:mm, cccc')}</strong>. All session times are shown in
-        this timezone.
+        It’s {now.setZone(value).toFormat('HH:mm')} on {now.setZone(value).toFormat('cccc')} there now. Session times are
+        shown in this timezone.
       </small>
-    </label>
+    </div>
   );
 }
 
-/** "Asia/Kolkata" -> "Kolkata, GMT+5:30"; "America/Argentina/Salta" -> "Argentina, Salta, GMT-3" */
-function label(zone: string): string {
-  const place = zone.split('/').slice(1).join(', ').replaceAll('_', ' ') || zone;
-  return `${place}, ${DateTime.now().setZone(zone).toFormat("'GMT'Z")}`;
-}
-
-function groupByRegion(zones: string[]): [string, string[]][] {
-  const groups = new Map<string, string[]>();
-  for (const zone of zones) {
-    const region = zone.includes('/') ? zone.split('/')[0]! : 'Other';
-    groups.set(region, [...(groups.get(region) ?? []), zone]);
-  }
-  return [...groups.entries()];
-}
+/** "America/Argentina/Salta" -> "Argentina, Salta" */
+const city = (zone: string) => zone.split('/').slice(1).join(', ').replaceAll('_', ' ') || zone;
+const region = (zone: string) => (zone.includes('/') ? zone.split('/')[0]! : 'Other');
+const offset = (zone: string) => DateTime.now().setZone(zone).toFormat("'GMT'Z");
+/** "Kolkata, GMT+5:30" */
+const label = (zone: string) => `${city(zone)}, ${offset(zone)}`;
 
 /** The current time, refreshed every minute. */
 function useNow() {
