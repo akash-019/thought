@@ -2,6 +2,10 @@
 
 Session booking with reminders.
 
+**Live demo:** https://thought-9hk8.onrender.com/login (log in with any [demo account](#quick-start),
+password `password123`). It runs on Render's free plan: the first visit after a quiet spell can take
+about a minute while it wakes up, and data resets to the demo accounts when it restarts.
+
 Thought is a small, working version of a booking flow for a mental-health platform. Members find a
 professional, pick a time from a 4-week calendar shown in their own timezone, confirm, and book a
 50-minute session. Both people get in-app reminders 24 hours and 1 hour before it starts.
@@ -108,6 +112,8 @@ lists every one with a short explanation.
 
 ## Deploying to Render
 
+Live: https://thought-9hk8.onrender.com/login
+
 **Render (free):** in Render choose **New → Blueprint** and pick this repository.
 [render.yaml](render.yaml) creates one web service from the same [Dockerfile](Dockerfile) used
 locally. Render gives it no `DATABASE_URL`, so [start.sh](start.sh) starts a Postgres inside the
@@ -195,4 +201,4 @@ comment saying what it contains and what it is for.
 | Persistence | Postgres + migrations | all integration tests |
 | Access control and privacy | every query scoped to the caller | `access.test.ts`, `access-matrix.test.ts` |
 | Security: log-in brute-force limit, sign-up limit, security headers, no data leaks | `modules/auth`, `app.ts` | `auth.test.ts` |
-| Extras: days off, minimum notice (2 hours), one `docker compose up`, Render Blueprint | `render.yaml` | `booking.test.ts` |
+| Extras: days off, minimum notice (2 hours), one `docker compose up`, deployed demo (Render) | `render.yaml` | `booking.test.ts` |
