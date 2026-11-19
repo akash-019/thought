@@ -11,7 +11,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { api } from '../api/client';
 import type { SlotsResponse } from '../api/types';
 import { ErrorNote, Loading } from '../components/States';
-import { cityOf, formatLongDate, theirClock } from '../lib/time';
+import { cityOf, formatLongDate, formatTime, theirDateIfDifferent } from '../lib/time';
 import { useLoad } from '../lib/useLoad';
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -119,7 +119,12 @@ export function SlotPicker({ professionalId, professionalName, refreshKey = 0, s
                 <span className="slot-time">{slot.localTime}</span>
                 {!sameClock && (
                   <span className="slot-their-time">
-                    {theirClock(slot.startAt, data.professionalTimezone, zone)} in {cityOf(data.professionalTimezone)}
+                    {formatTime(slot.startAt, data.professionalTimezone)} in {cityOf(data.professionalTimezone)}
+                    {theirDateIfDifferent(slot.startAt, data.professionalTimezone, zone) && (
+                      <span className="slot-their-date">
+                        {theirDateIfDifferent(slot.startAt, data.professionalTimezone, zone)}
+                      </span>
+                    )}
                   </span>
                 )}
               </button>

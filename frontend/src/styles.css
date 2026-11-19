@@ -790,6 +790,10 @@ textarea:focus {
   color: var(--ink-soft);
 }
 
+.slot-their-date {
+  display: block;
+}
+
 .slot.selected {
   background: var(--dawn-soft);
   border-color: var(--dawn);
