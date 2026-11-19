@@ -43,7 +43,8 @@ export interface Session {
   endAt: string;
   status: 'booked' | 'cancelled' | 'rescheduled';
   cancelledBy: Role | null;
-  counterpart: { id?: string; name: string };
+  /** The other person. `id` is only given to members (the professional's id). */
+  counterpart: { id?: string; name: string; timezone: string };
   canCancel: boolean;
   canReschedule: boolean;
 }

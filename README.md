@@ -1,6 +1,8 @@
-# Session booking with reminders
+# Thought
 
-A small, working version of a booking flow for a mental-health platform. Members find a
+Session booking with reminders.
+
+Thought is a small, working version of a booking flow for a mental-health platform. Members find a
 professional, pick a time from a 4-week calendar shown in their own timezone, confirm, and book a
 50-minute session. Both people get in-app reminders 24 hours and 1 hour before it starts.
 

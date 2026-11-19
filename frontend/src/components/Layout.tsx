@@ -8,6 +8,7 @@ import { NavLink, Outlet } from 'react-router';
 import { useUser, useAuth } from '../auth/AuthContext';
 import { cityOf } from '../lib/time';
 import { NotificationBell } from '../notifications/NotificationBell';
+import { Brand } from './Brand';
 
 export function Layout() {
   const user = useUser();
@@ -30,7 +31,7 @@ export function Layout() {
       </a>
       <header className="topbar">
         <div className="topbar-inner">
-          <span className="brand">Session booking</span>
+          <Brand />
           <nav className="nav" aria-label="Main">
             {links.map((l) => (
               <NavLink key={l.to} to={l.to} className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}>

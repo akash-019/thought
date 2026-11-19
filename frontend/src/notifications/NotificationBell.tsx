@@ -3,6 +3,7 @@
  *
  * The bell in the header: shows how many notifications are unread and opens the list.
  * Checks for new notifications every 30 seconds (reminders are created by the backend worker).
+ * New ones stay highlighted while the list is open and count as read once it is closed.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../api/client';
@@ -32,12 +33,22 @@ export function NotificationBell() {
     return () => window.clearInterval(timer);
   }, [load]);
 
+  /** Closing the list marks what was shown as read. */
+  const close = useCallback(() => {
+    setOpen(false);
+    if (unread > 0) {
+      api('/notifications/read-all', { method: 'POST' })
+        .then(load)
+        .catch(() => {});
+    }
+  }, [unread, load]);
+
   // Close on Escape or a click outside the panel.
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && close();
     const onClick = (e: MouseEvent) => {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) setOpen(false);
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) close();
     };
     document.addEventListener('keydown', onKey);
     document.addEventListener('mousedown', onClick);
@@ -45,12 +56,7 @@ export function NotificationBell() {
       document.removeEventListener('keydown', onKey);
       document.removeEventListener('mousedown', onClick);
     };
-  }, [open]);
-
-  async function markAllRead() {
-    await api('/notifications/read-all', { method: 'POST' });
-    await load();
-  }
+  }, [open, close]);
 
   return (
     <div className="bell" ref={panelRef}>
@@ -60,8 +66,9 @@ export function NotificationBell() {
         aria-expanded={open}
         aria-label={unread ? `Notifications, ${unread} unread` : 'Notifications'}
         onClick={() => {
-          setOpen((o) => !o);
-          if (!open) load().catch(() => {});
+          if (open) return close();
+          setOpen(true);
+          load().catch(() => {});
         }}
       >
         <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
@@ -80,11 +87,6 @@ export function NotificationBell() {
         <div className="bell-panel" role="dialog" aria-label="Notifications">
           <div className="bell-panel-head">
             <h2>Notifications</h2>
-            {unread > 0 && (
-              <button type="button" className="link-button" onClick={markAllRead}>
-                Mark all as read
-              </button>
-            )}
           </div>
           {items.length === 0 ? (
             <p className="bell-empty">Nothing yet. Reminders appear here 24 hours and 1 hour before each session.</p>

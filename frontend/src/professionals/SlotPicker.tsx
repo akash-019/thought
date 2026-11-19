@@ -56,6 +56,7 @@ export function SlotPicker({ professionalId, professionalName, refreshKey = 0, s
   const sameClock = data.professionalTimezone === zone;
   const weeks = calendarWeeks(zone, data.days.at(-1)!.date);
   const daySlots = day ? (slotsByDate.get(day) ?? []) : [];
+  const today = DateTime.now().setZone(zone).toISODate();
 
   return (
     <div className="picker">
@@ -74,10 +75,11 @@ export function SlotPicker({ professionalId, professionalName, refreshKey = 0, s
               <button
                 key={date}
                 type="button"
-                className={['calendar-day', count ? 'has-slots' : '', isSelected ? 'selected' : ''].join(' ')}
+                className={['calendar-day', count ? 'has-slots' : '', isSelected ? 'selected' : '', date === today ? 'today' : ''].join(' ')}
                 disabled={!count}
+                aria-current={date === today ? 'date' : undefined}
                 aria-pressed={isSelected}
-                aria-label={`${formatLongDate(date)}${count ? `, ${count} free time${count > 1 ? 's' : ''}` : ', no free times'}`}
+                aria-label={`${date === today ? 'Today, ' : ''}${formatLongDate(date)}${count ? `, ${count} free time${count > 1 ? 's' : ''}` : ', no free times'}`}
                 onClick={() => {
                   setDay(date);
                   onSelect(null);

@@ -70,8 +70,8 @@ describe('booking', () => {
 
     const proView = await pro.agent.get('/api/sessions?scope=upcoming');
     expect(proView.body.sessions).toHaveLength(1);
-    // The professional sees the member's name only (no id, no email).
-    expect(proView.body.sessions[0].counterpart).toEqual({ name: 'Sam Example' });
+    // The professional sees the member's name and timezone only (no id, no email).
+    expect(proView.body.sessions[0].counterpart).toEqual({ name: 'Sam Example', timezone: 'UTC' });
   });
 
   it('rejects past slots, off-grid times, times outside hours and blocked dates', async () => {

@@ -7,8 +7,11 @@ import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
 import { errorMessage } from '../api/client';
 import { useAuth } from './AuthContext';
+import { usePageTitle } from '../lib/usePageTitle';
+import { Brand } from '../components/Brand';
 
 export function LoginPage() {
+  usePageTitle('Log in');
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -30,7 +33,9 @@ export function LoginPage() {
   return (
     <div className="auth">
       <div className="auth-card">
-        <p className="brand">Session booking</p>
+        <div className="auth-brand">
+          <Brand />
+        </div>
         <h1>Log in</h1>
         <p className="muted">Book and manage your sessions.</p>
         <form onSubmit={submit} className="form">

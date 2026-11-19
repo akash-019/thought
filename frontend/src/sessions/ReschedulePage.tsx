@@ -13,6 +13,7 @@ import { ErrorNote, Loading } from '../components/States';
 import { useToast } from '../components/Toast';
 import { formatDateTime } from '../lib/time';
 import { useLoad } from '../lib/useLoad';
+import { usePageTitle } from '../lib/usePageTitle';
 import { SlotPicker } from '../professionals/SlotPicker';
 import { SessionSummary } from './SessionSummary';
 
@@ -32,6 +33,7 @@ export function ReschedulePage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  usePageTitle('Reschedule');
 
   if (loading) return <Loading />;
   if (loadError || !data) return <ErrorNote message={loadError ?? 'Session not found.'} />;

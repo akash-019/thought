@@ -9,8 +9,10 @@ import type { Professional } from '../api/types';
 import { Empty, ErrorNote, Loading } from '../components/States';
 import { cityOf } from '../lib/time';
 import { useLoad } from '../lib/useLoad';
+import { usePageTitle } from '../lib/usePageTitle';
 
 export function ProfessionalsPage() {
+  usePageTitle('Find a professional');
   const { data, error, loading, reload } = useLoad(
     () => api<{ professionals: Professional[] }>('/professionals').then((r) => r.professionals),
     [],

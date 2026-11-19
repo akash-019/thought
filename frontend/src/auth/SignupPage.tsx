@@ -10,6 +10,8 @@ import type { Role } from '../api/types';
 import { browserTimezone } from '../lib/time';
 import { useAuth } from './AuthContext';
 import { TimezoneSelect } from './TimezoneSelect';
+import { usePageTitle } from '../lib/usePageTitle';
+import { Brand } from '../components/Brand';
 
 const ROLES: { value: Role; title: string; text: string }[] = [
   { value: 'member', title: 'I’m looking for support', text: 'Find a professional and book sessions.' },
@@ -17,6 +19,7 @@ const ROLES: { value: Role; title: string; text: string }[] = [
 ];
 
 export function SignupPage() {
+  usePageTitle('Create your account');
   const { signup } = useAuth();
   const [role, setRole] = useState<Role>('member');
   const [name, setName] = useState('');
@@ -49,7 +52,9 @@ export function SignupPage() {
   return (
     <div className="auth">
       <div className="auth-card auth-card-wide">
-        <p className="brand">Session booking</p>
+        <div className="auth-brand">
+          <Brand />
+        </div>
         <h1>Create your account</h1>
         <form onSubmit={submit} className="form">
           <fieldset className="role-picker">

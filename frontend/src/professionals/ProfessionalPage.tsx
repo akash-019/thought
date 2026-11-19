@@ -16,6 +16,7 @@ import { ErrorNote, Loading } from '../components/States';
 import { useToast } from '../components/Toast';
 import { cityOf, formatDateTime } from '../lib/time';
 import { useLoad } from '../lib/useLoad';
+import { usePageTitle } from '../lib/usePageTitle';
 import { SessionSummary } from '../sessions/SessionSummary';
 import { initials } from './ProfessionalsPage';
 import { SlotPicker } from './SlotPicker';
@@ -32,6 +33,7 @@ export function ProfessionalPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  usePageTitle(pro.data?.name ?? 'Professional');
 
   if (pro.loading) return <Loading />;
   if (pro.error || !pro.data) return <ErrorNote message={pro.error ?? 'Professional not found.'} />;

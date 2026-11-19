@@ -12,6 +12,7 @@ import { Empty, ErrorNote, Loading } from '../components/States';
 import { useToast } from '../components/Toast';
 import { cityOf } from '../lib/time';
 import { useLoad } from '../lib/useLoad';
+import { usePageTitle } from '../lib/usePageTitle';
 import { SessionRow } from './SessionRow';
 
 type Scope = 'upcoming' | 'past';
@@ -25,6 +26,7 @@ export function MySessionsPage() {
     [scope],
   );
   const isMember = user.role === 'member';
+  usePageTitle(isMember ? 'My sessions' : 'Schedule');
 
   return (
     <>

@@ -1,7 +1,7 @@
 # API documentation (OpenAPI 3.1). Served as interactive docs at http://localhost:4000/api/docs
 openapi: 3.1.0
 info:
-  title: Session Booking API
+  title: Thought API
   version: 1.0.0
   description: |
     Members book 50-minute sessions with professionals. Both get in-app reminders
@@ -440,10 +440,13 @@ components:
         cancelledBy: { type: [string, 'null'], enum: [member, professional, null] }
         counterpart:
           type: object
-          description: The other person. Members get the professional's id and name; professionals get only the member's name.
+          description: |
+            The other person. Both sides get the other's name and timezone (to show the session in their
+            local time too). Members also get the professional's id; professionals never get the member's id or email.
           properties:
             id: { type: string }
             name: { type: string }
+            timezone: { type: string, example: Asia/Singapore }
         canCancel: { type: boolean, description: Whether the caller may cancel right now (false inside 24h for members). }
         canReschedule: { type: boolean, description: Members only, and only 24h or more before the start. }
 

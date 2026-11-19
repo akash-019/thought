@@ -4,13 +4,14 @@
  * One session in a list: date, time, who it is with, its status, and the actions allowed
  * right now. Cancelling asks for confirmation inline (no browser pop-up). Inside the 24-hour
  * window a member sees why the buttons are gone instead of the buttons.
+ * The time is shown in your timezone, and under it in the other person's, when their clock differs.
  */
 import { DateTime } from 'luxon';
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { api, errorMessage } from '../api/client';
 import type { Session, User } from '../api/types';
-import { formatTime } from '../lib/time';
+import { cityOf, clocksDiffer, dayLabel, formatTime, relative } from '../lib/time';
 
 interface Props {
   session: Session;
@@ -25,6 +26,9 @@ export function SessionRow({ session: s, user, onChanged }: Props) {
   const start = DateTime.fromISO(s.startAt, { zone: user.timezone });
   const isMember = user.role === 'member';
   const isUpcoming = s.status === 'booked' && new Date(s.endAt) > new Date();
+  const other = s.counterpart;
+  const shortNotice = new Date(s.startAt).getTime() - Date.now() < 24 * 60 * 60 * 1000;
+  const firstName = other.name.replace(/^(Dr|Mr|Ms|Mrs)\.? /, '').split(' ')[0];
 
   async function cancel() {
     setBusy(true);
@@ -48,11 +52,18 @@ export function SessionRow({ session: s, user, onChanged }: Props) {
       <div className="session-main">
         <p className="session-when">
           {start.toFormat('cccc')}, {formatTime(s.startAt, user.timezone)} – {formatTime(s.endAt, user.timezone)}
+          {isUpcoming && <span className="session-day-label">{dayLabel(s.startAt, user.timezone)}</span>}
         </p>
         <p className="session-with">
           {isMember ? 'With ' : ''}
-          {s.counterpart.name}
+          {other.name}
         </p>
+        {clocksDiffer(s.startAt, user.timezone, other.timezone) && (
+          <p className="session-their-time">
+            {formatTime(s.startAt, other.timezone)} – {formatTime(s.endAt, other.timezone)} for {firstName} in{' '}
+            {cityOf(other.timezone)}
+          </p>
+        )}
         {!isUpcoming && <p className="session-status">{statusText(s, user)}</p>}
         {isUpcoming && isMember && !s.canCancel && (
           <p className="session-locked">
@@ -72,6 +83,12 @@ export function SessionRow({ session: s, user, onChanged }: Props) {
           {confirmingCancel ? (
             <div className="inline-confirm">
               <p>Cancel this session? {s.counterpart.name} will be told.</p>
+              {!isMember && shortNotice && (
+                <p className="inline-confirm-note">
+                  It starts {relative(s.startAt)}. Short-notice cancellations are hard for members, so only cancel if
+                  you must.
+                </p>
+              )}
               <div className="button-row">
                 <button type="button" className="button button-danger" onClick={cancel} disabled={busy}>
                   {busy ? 'Cancelling…' : 'Cancel session'}

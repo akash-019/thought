@@ -127,11 +127,21 @@ a {
 }
 
 .brand {
+  display: inline-flex;
+  flex-direction: column;
+  line-height: 1.1;
+}
+
+.brand-name {
   font-family: var(--font-display);
   font-weight: 600;
-  font-size: 1.15rem;
+  font-size: 1.35rem;
   color: var(--tide-dark);
-  margin: 0;
+}
+
+.brand-tagline {
+  font-size: 0.75rem;
+  color: var(--ink-soft);
 }
 
 .nav {
@@ -535,7 +545,7 @@ textarea:focus {
   width: min(520px, 100%);
 }
 
-.auth-card .brand {
+.auth-brand {
   margin-bottom: 1.5rem;
 }
 
@@ -1076,4 +1086,81 @@ textarea:focus {
     animation: none !important;
     transition: none !important;
   }
+}
+
+/* --- Session row extras: the other person's time, and "Today" / "In 3 days" --------------- */
+
+.session-their-time {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+}
+
+.session-day-label {
+  margin-left: 0.6rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: var(--mist);
+  color: var(--tide-dark);
+  font-size: 0.8rem;
+  font-weight: 600;
+  vertical-align: 0.1em;
+}
+
+/* Today in the booking calendar: a small mark under the date. */
+.calendar-day.today::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 6px;
+  width: 5px;
+  height: 5px;
+  margin-left: -2.5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* --- Dialog (leave without saving) ---------------------------------------------------------- */
+
+.dialog {
+  width: min(440px, calc(100vw - 2rem));
+  border: 0;
+  border-radius: 14px;
+  padding: 1.5rem;
+  color: var(--ink);
+  box-shadow: var(--shadow-lift);
+}
+
+.dialog::backdrop {
+  background: rgb(31 42 55 / 40%);
+}
+
+.dialog h2 {
+  margin-top: 0;
+}
+
+/* --- Inline warning (e.g. blocking a day that has bookings) --------------------------------- */
+
+.warning {
+  margin: 1rem 0;
+  padding: 1rem;
+  border-radius: var(--radius);
+  background: var(--dawn-soft);
+  box-shadow: inset 3px 0 0 var(--dawn);
+}
+
+.warning p {
+  margin: 0 0 0.4rem;
+}
+
+.warning ul {
+  margin: 0.25rem 0 0;
+  padding-left: 1.2rem;
+}
+
+.inline-confirm p.inline-confirm-note {
+  margin-top: 0.4rem;
+  font-weight: 400;
+  font-size: 0.9rem;
+  color: var(--alert);
 }

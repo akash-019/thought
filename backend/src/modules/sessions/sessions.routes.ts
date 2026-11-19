@@ -45,8 +45,11 @@ export async function describeSessions(m: EntityManager, user: AuthUser, session
       endAt: s.endAt.toISOString(),
       status: s.status,
       cancelledBy: s.cancelledBy,
-      // Members get the professional's id (to rebook); professionals only see the member's name.
-      counterpart: isMember ? { id: other.id, name: other.name } : { name: other.name },
+      // The other person's timezone lets each side see the session in the other's local time too.
+      // Members also get the professional's id (to rebook); professionals never get the member's id or email.
+      counterpart: isMember
+        ? { id: other.id, name: other.name, timezone: other.timezone }
+        : { name: other.name, timezone: other.timezone },
       canCancel: active && (!isMember || memberMayChange),
       canReschedule: memberMayChange,
     };

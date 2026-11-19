@@ -23,6 +23,15 @@ export const formatDateTime = (iso: string, zone: string) => at(iso, zone).toFor
 /** "Asia/Kolkata" -> "Kolkata", "America/Los_Angeles" -> "Los Angeles" */
 export const cityOf = (zone: string) => (zone.split('/').pop() ?? zone).replaceAll('_', ' ');
 
+/** "Today", "Tomorrow", "In 3 days" for a session, counted in calendar days in `zone`. */
+export function dayLabel(iso: string, zone: string): string {
+  const text = DateTime.fromISO(iso, { zone }).toRelativeCalendar({ base: DateTime.now().setZone(zone), unit: 'days' }) ?? '';
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+/** True if two timezones show a different clock time at this moment (e.g. Singapore vs Kolkata). */
+export const clocksDiffer = (iso: string, zoneA: string, zoneB: string) => formatTime(iso, zoneA) !== formatTime(iso, zoneB);
+
 /** "in 3 days", "in 2 hours", "2 days ago" */
 export const relative = (iso: string) => DateTime.fromISO(iso).toRelative() ?? '';
 
