@@ -13,10 +13,9 @@ import { ErrorNote, Loading } from '../components/States';
 import { useToast } from '../components/Toast';
 import { UnsavedChangesGuard } from '../components/UnsavedChangesGuard';
 import { useLoad } from '../lib/useLoad';
+import { addHours, previewSessions } from './preview';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-const SESSION_MINUTES = 50;
-const STEP_MINUTES = 60; // a 50-minute session + 10-minute break, as the backend lays them out
 
 export function WeeklyHours() {
   const toast = useToast();
@@ -39,7 +38,7 @@ export function WeeklyHours() {
   const remove = (index: number) => setRules((all) => all.filter((_, i) => i !== index));
   const add = (weekday: number) => {
     const lastEnd = rules.filter((r) => r.weekday === weekday).at(-1)?.end;
-    const start = lastEnd && lastEnd < '20:00' ? addHour(lastEnd) : '09:00';
+    const start = lastEnd && lastEnd < '20:00' ? addHours(lastEnd, 1) : '09:00';
     setRules((all) => [...all, { weekday, start, end: addHours(start, 4) }]);
   };
 
@@ -117,19 +116,3 @@ export function WeeklyHours() {
     </section>
   );
 }
-
-/** "3 sessions: 09:00, 10:00, 11:00" for one range, laid out like the backend does it. */
-function previewSessions(rule: WeeklyRule): string {
-  const start = toMinutes(rule.start);
-  const end = toMinutes(rule.end);
-  if (end <= start) return 'End must be after start.';
-  const starts: string[] = [];
-  for (let m = start; m + SESSION_MINUTES <= end; m += STEP_MINUTES) starts.push(fromMinutes(m));
-  if (starts.length === 0) return 'Too short for a 50-minute session.';
-  return `${starts.length} session${starts.length > 1 ? 's' : ''}: ${starts.join(', ')}`;
-}
-
-const toMinutes = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
-const fromMinutes = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
-const addHours = (t: string, h: number) => fromMinutes(Math.min(toMinutes(t) + h * 60, 23 * 60 + 55));
-const addHour = (t: string) => addHours(t, 1);
