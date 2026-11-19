@@ -1,0 +1,508 @@
+# API documentation (OpenAPI 3.1). Served as interactive docs at http://localhost:4000/api/docs
+openapi: 3.1.0
+info:
+  title: Session Booking API
+  version: 1.0.0
+  description: |
+    Members book 50-minute sessions with professionals. Both get in-app reminders
+    24 hours and 1 hour before each session.
+
+    **Authentication.** `POST /auth/signup` and `POST /auth/login` return an `accessToken`
+    (JWT, valid 15 minutes) and a `refreshToken` (valid 7 days). Send the access token on every
+    request as `Authorization: Bearer <accessToken>`. When a request fails with
+    `401 TOKEN_EXPIRED`, call `POST /auth/refresh` with the refresh token to get a new pair.
+    Each refresh token works once.
+
+    **Times.** All times are ISO 8601 instants in UTC (e.g. `2027-01-06T10:00:00.000Z`).
+    The calendar endpoint also groups slots by date in the member's own timezone.
+
+    **Errors.** Every error has the same shape: `{ "error": { "code": "SLOT_TAKEN", "message": "..." } }`.
+    `code` is stable and meant for the app; `message` is readable and can be shown to users.
+servers:
+  - url: /api
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Auth
+  - name: Availability
+    description: Professionals manage their own working hours and days off.
+  - name: Professionals
+    description: Members browse professionals and see free slots.
+  - name: Sessions
+    description: Booking, listing, cancelling and rescheduling sessions.
+  - name: Notifications
+    description: The in-app notification list (reminders and session changes).
+
+paths:
+  /timezones:
+    get:
+      tags: [Auth]
+      summary: Timezones a user can choose at sign-up
+      security: []
+      responses:
+        '200':
+          description: IANA timezone names
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  timezones: { type: array, items: { type: string }, example: [UTC, Asia/Kolkata, Europe/London] }
+
+  /auth/signup:
+    post:
+      tags: [Auth]
+      summary: Create an account (member or professional) and log in
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password, role, timezone]
+              properties:
+                name: { type: string, example: Sam Example }
+                email: { type: string, format: email, example: sam@example.com }
+                password: { type: string, minLength: 8, example: password123 }
+                role: { type: string, enum: [member, professional] }
+                timezone: { type: string, example: Asia/Kolkata }
+                bio: { type: string, description: Shown on a professional's profile. }
+      responses:
+        '201': { $ref: '#/components/responses/LoggedIn' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '409': { description: 'EMAIL_TAKEN', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Log in with email and password
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, example: sam@example.com }
+                password: { type: string, example: password123 }
+      responses:
+        '200': { $ref: '#/components/responses/LoggedIn' }
+        '401': { description: 'INVALID_CREDENTIALS', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Swap a refresh token for a new access + refresh token pair
+      description: |
+        The old refresh token stops working. Presenting an already-used refresh token again
+        revokes all of the user's refresh tokens (possible theft), so they must log in again.
+      security: []
+      requestBody: { $ref: '#/components/requestBodies/RefreshToken' }
+      responses:
+        '200': { $ref: '#/components/responses/LoggedIn' }
+        '401': { description: 'INVALID_REFRESH_TOKEN', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Log out (revokes the refresh token)
+      description: The app should also forget its access token, which expires within 15 minutes anyway.
+      security: []
+      requestBody: { $ref: '#/components/requestBodies/RefreshToken' }
+      responses:
+        '204': { description: Logged out }
+
+  /me:
+    get:
+      tags: [Auth]
+      summary: The logged-in user
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema: { type: object, properties: { user: { $ref: '#/components/schemas/User' } } }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+
+  /me/availability:
+    get:
+      tags: [Availability]
+      summary: My weekly working hours (professionals)
+      responses:
+        '200': { $ref: '#/components/responses/WeeklyHours' }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+        '403': { $ref: '#/components/responses/WrongRole' }
+    put:
+      tags: [Availability]
+      summary: Replace my weekly working hours (professionals)
+      description: |
+        Times are in the professional's own timezone. Slots start every hour from the start of
+        each range (50-minute session + 10-minute break). Existing bookings are not affected.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rules]
+              properties:
+                rules: { type: array, items: { $ref: '#/components/schemas/WeeklyRule' } }
+            example:
+              rules:
+                - { weekday: 1, start: '09:00', end: '13:00' }
+                - { weekday: 1, start: '14:00', end: '17:00' }
+                - { weekday: 3, start: '10:00', end: '18:00' }
+      responses:
+        '200': { $ref: '#/components/responses/WeeklyHours' }
+        '400': { description: 'INVALID_AVAILABILITY (e.g. overlapping ranges)', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { $ref: '#/components/responses/WrongRole' }
+
+  /me/blocked-dates:
+    get:
+      tags: [Availability]
+      summary: My blocked days (professionals)
+      responses:
+        '200': { $ref: '#/components/responses/BlockedDates' }
+        '403': { $ref: '#/components/responses/WrongRole' }
+    put:
+      tags: [Availability]
+      summary: Replace my blocked days, e.g. holidays (professionals)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                dates: { type: array, items: { type: string, format: date }, example: ['2027-12-25', '2027-12-26'] }
+      responses:
+        '200': { $ref: '#/components/responses/BlockedDates' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '403': { $ref: '#/components/responses/WrongRole' }
+
+  /professionals:
+    get:
+      tags: [Professionals]
+      summary: List professionals
+      responses:
+        '200':
+          description: Public profiles
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  professionals: { type: array, items: { $ref: '#/components/schemas/Professional' } }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+
+  /professionals/{id}:
+    get:
+      tags: [Professionals]
+      summary: One professional's profile
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '200':
+          description: Public profile
+          content:
+            application/json:
+              schema: { type: object, properties: { professional: { $ref: '#/components/schemas/Professional' } } }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /professionals/{id}/slots:
+    get:
+      tags: [Professionals]
+      summary: Free slots for the next 4 weeks, in the member's timezone (members)
+      description: |
+        Only free start times are returned, never who booked other times. Slots that overlap
+        the member's own sessions (with anyone) are left out too.
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '200':
+          description: Slots grouped by date in the member's timezone
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  timezone: { type: string, description: "The member's timezone (dates and localTime use it).", example: America/Los_Angeles }
+                  professionalTimezone: { type: string, example: Asia/Kolkata }
+                  days:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        date: { type: string, format: date, example: '2027-01-04' }
+                        slots:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              startAt: { type: string, format: date-time, example: '2027-01-05T03:30:00.000Z' }
+                              localTime: { type: string, example: '19:30' }
+        '403': { $ref: '#/components/responses/WrongRole' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /sessions:
+    post:
+      tags: [Sessions]
+      summary: Book a slot (members)
+      description: Creates the session and schedules reminders for both people (24h and 1h before).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [professionalId, startAt]
+              properties:
+                professionalId: { type: string, example: '3' }
+                startAt: { type: string, format: date-time, example: '2027-01-06T10:00:00.000Z' }
+      responses:
+        '201': { $ref: '#/components/responses/OneSession' }
+        '400':
+          description: 'SLOT_IN_PAST, TOO_SOON (inside the minimum notice), INVALID_SLOT (not an offered slot)'
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+        '403': { $ref: '#/components/responses/WrongRole' }
+        '409':
+          description: 'SLOT_TAKEN (someone booked it first) or MEMBER_OVERLAP (you already have a session then)'
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    get:
+      tags: [Sessions]
+      summary: My sessions
+      description: |
+        Members see their own sessions; professionals see their own schedule with member names.
+        `upcoming` = booked and not finished (soonest first). `past` = finished, cancelled or rescheduled (newest first).
+      parameters:
+        - name: scope
+          in: query
+          schema: { type: string, enum: [upcoming, past], default: upcoming }
+      responses:
+        '200':
+          description: Sessions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessions: { type: array, items: { $ref: '#/components/schemas/Session' } }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+
+  /sessions/{id}:
+    get:
+      tags: [Sessions]
+      summary: One of my sessions
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '200': { $ref: '#/components/responses/OneSession' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /sessions/{id}/cancel:
+    post:
+      tags: [Sessions]
+      summary: Cancel a session
+      description: |
+        Members can cancel up to 24 hours before the start. Professionals can cancel any time
+        before the session ends. The other person gets a notification; reminders are cancelled.
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '200': { $ref: '#/components/responses/OneSession' }
+        '403': { $ref: '#/components/responses/Within24h' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { description: 'NOT_BOOKED (already cancelled) or SESSION_OVER', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  /sessions/{id}/reschedule:
+    post:
+      tags: [Sessions]
+      summary: Move a session to another slot with the same professional (members)
+      description: |
+        Allowed up to 24 hours before the start. Atomic: if the new slot cannot be booked,
+        nothing changes and the member keeps the original session.
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [startAt]
+              properties:
+                startAt: { type: string, format: date-time, example: '2027-01-06T14:00:00.000Z' }
+      responses:
+        '200': { $ref: '#/components/responses/OneSession' }
+        '400': { description: 'SAME_SLOT, SLOT_IN_PAST, TOO_SOON, INVALID_SLOT', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+        '403': { $ref: '#/components/responses/Within24h' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { description: 'SLOT_TAKEN, MEMBER_OVERLAP, NOT_BOOKED', content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  /notifications:
+    get:
+      tags: [Notifications]
+      summary: My latest 50 notifications
+      responses:
+        '200':
+          description: Notifications, newest first
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  unreadCount: { type: integer, example: 2 }
+                  notifications: { type: array, items: { $ref: '#/components/schemas/Notification' } }
+        '401': { $ref: '#/components/responses/Unauthenticated' }
+
+  /notifications/{id}/read:
+    post:
+      tags: [Notifications]
+      summary: Mark one notification as read
+      parameters: [{ $ref: '#/components/parameters/Id' }]
+      responses:
+        '204': { description: Marked as read }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /notifications/read-all:
+    post:
+      tags: [Notifications]
+      summary: Mark all my notifications as read
+      responses:
+        '204': { description: All marked as read }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    Id:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, pattern: '^\d+$' }
+
+  requestBodies:
+    RefreshToken:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [refreshToken]
+            properties:
+              refreshToken: { type: string }
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: string, example: SLOT_TAKEN }
+            message: { type: string, example: 'Sorry, this time was just booked. Please pick another slot.' }
+
+    User:
+      type: object
+      properties:
+        id: { type: string, example: '1' }
+        name: { type: string, example: Sam Example }
+        email: { type: string, example: sam@example.com }
+        role: { type: string, enum: [member, professional] }
+        timezone: { type: string, example: Europe/London }
+
+    WeeklyRule:
+      type: object
+      required: [weekday, start, end]
+      properties:
+        weekday: { type: integer, minimum: 1, maximum: 7, description: '1 = Monday ... 7 = Sunday' }
+        start: { type: string, example: '09:00', description: 'HH:MM in the professional''s timezone' }
+        end: { type: string, example: '17:00', description: 'HH:MM; 24:00 = midnight at the end of the day' }
+
+    Professional:
+      type: object
+      properties:
+        id: { type: string, example: '3' }
+        name: { type: string, example: Dr Alex Fictional }
+        bio: { type: [string, 'null'], example: Counsellor focusing on stress and burnout. }
+        timezone: { type: string, example: Asia/Kolkata }
+
+    Session:
+      type: object
+      properties:
+        id: { type: string, example: '12' }
+        startAt: { type: string, format: date-time }
+        endAt: { type: string, format: date-time, description: Always 50 minutes after startAt. }
+        status: { type: string, enum: [booked, cancelled, rescheduled] }
+        cancelledBy: { type: [string, 'null'], enum: [member, professional, null] }
+        counterpart:
+          type: object
+          description: The other person. Members get the professional's id and name; professionals get only the member's name.
+          properties:
+            id: { type: string }
+            name: { type: string }
+        canCancel: { type: boolean, description: Whether the caller may cancel right now (false inside 24h for members). }
+        canReschedule: { type: boolean, description: Members only, and only 24h or more before the start. }
+
+    Notification:
+      type: object
+      properties:
+        id: { type: string }
+        type: { type: string, enum: [reminder_24h, reminder_1h, session_booked, session_cancelled, session_rescheduled] }
+        createdAt: { type: string, format: date-time }
+        readAt: { type: [string, 'null'], format: date-time }
+        session: { $ref: '#/components/schemas/Session' }
+
+  responses:
+    LoggedIn:
+      description: The user and a fresh access + refresh token pair
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              user: { $ref: '#/components/schemas/User' }
+              accessToken: { type: string, description: 'JWT. Send as Authorization: Bearer <accessToken>.' }
+              accessTokenExpiresAt: { type: string, format: date-time }
+              refreshToken: { type: string, description: Use once with POST /auth/refresh. }
+              refreshTokenExpiresAt: { type: string, format: date-time }
+    WeeklyHours:
+      description: Weekly hours, in the professional's timezone
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              timezone: { type: string, example: Asia/Kolkata }
+              rules: { type: array, items: { $ref: '#/components/schemas/WeeklyRule' } }
+    BlockedDates:
+      description: Blocked days, in the professional's timezone
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              dates: { type: array, items: { type: string, format: date } }
+    OneSession:
+      description: The session
+      content:
+        application/json:
+          schema: { type: object, properties: { session: { $ref: '#/components/schemas/Session' } } }
+    ValidationError:
+      description: 'VALIDATION_ERROR: a field is missing or invalid'
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    Unauthenticated:
+      description: 'UNAUTHENTICATED (no or invalid token) or TOKEN_EXPIRED (call /auth/refresh)'
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    WrongRole:
+      description: 'WRONG_ROLE: e.g. a professional trying to book, or a member editing availability'
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    NotFound:
+      description: "NOT_FOUND: doesn't exist, or isn't yours"
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+    Within24h:
+      description: 'WITHIN_24H: members cannot cancel or reschedule less than 24 hours before the start'
+      content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
